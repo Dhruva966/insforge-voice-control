@@ -17,8 +17,8 @@ export default async function handler(
   let heartbeat: ReturnType<typeof setInterval> | null = null;
 
   try {
-    const baseUrl = process.env.INSFORGE_URL;
-    const apiKey = process.env.INSFORGE_KEY;
+    const baseUrl = process.env.INSFORGE_URL?.trim();
+    const apiKey = process.env.INSFORGE_KEY?.trim();
     if (!baseUrl || !apiKey) {
       throw new Error("Missing INSFORGE_URL or INSFORGE_KEY");
     }
