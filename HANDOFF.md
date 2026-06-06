@@ -25,6 +25,10 @@
 - [x] Slack slash commands now require `SLACK_SIGNING_SECRET`
 - [x] Twilio signature bypass is explicit (`DISABLE_TWILIO_SIGNATURE_VALIDATION`) instead of automatic in development
 - [x] `createSession()` is idempotent for duplicate `CallSid` retries; `completeSession()` now records `duration_s`
+- [x] Media streams carry custom parameters, and the backend validates a one-time stream token before opening Gemini
+- [x] Early Twilio audio is buffered until Gemini is ready
+- [x] Gemini turn detection tuned down to a 250ms silence window for faster handoff
+- [x] CLI-backed actions and telemetry publishes no longer block the voice turn loop
 
 ## What Needs to Be Done Next
 

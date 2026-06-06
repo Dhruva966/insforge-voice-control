@@ -2,6 +2,7 @@ import WebSocket from "ws";
 import { completeSession } from "../services/insforge/sessions";
 import { openGeminiSession, GeminiHandle } from "../services/gemini/liveSession";
 import { consumeAlert } from "../services/alert/store";
+import { consumeStreamToken } from "../services/streamAuth";
 
 interface TwilioFrame {
   event: string;
@@ -20,6 +21,7 @@ export function handleMediaStream(ws: WebSocket): void {
   let streamSid: string | null = null;
   let gemini: GeminiHandle | null = null;
   let completed = false;
+  const bufferedAudio: string[] = [];
 
   async function finalize() {
     if (completed || !callSid) return;
@@ -44,6 +46,14 @@ export function handleMediaStream(ws: WebSocket): void {
     if (frame.event === "start" && frame.start) {
       callSid = frame.start.callSid;
       streamSid = frame.start.streamSid;
+
+      const streamToken = frame.start.customParameters?.streamToken;
+      const expectedCallSid = frame.start.customParameters?.callSid ?? callSid;
+      if (!consumeStreamToken(expectedCallSid, streamToken)) {
+        console.error(`[${callSid}] rejected media stream: invalid or missing stream token`);
+        ws.close();
+        return;
+      }
 
       // Check for alert context passed via Twilio Stream custom parameters
       const alertId = frame.start.customParameters?.alertId;
@@ -74,10 +84,20 @@ export function handleMediaStream(ws: WebSocket): void {
         ws.close();
         return null;
       });
+
+      if (gemini && bufferedAudio.length > 0) {
+        for (const payload of bufferedAudio.splice(0)) {
+          gemini.sendAudio(payload);
+        }
+      }
     }
 
-    if (frame.event === "media" && frame.media && gemini) {
-      gemini.sendAudio(frame.media.payload);
+    if (frame.event === "media" && frame.media) {
+      if (gemini) {
+        gemini.sendAudio(frame.media.payload);
+      } else {
+        bufferedAudio.push(frame.media.payload);
+      }
     }
 
     if (frame.event === "stop") {

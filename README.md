@@ -95,6 +95,12 @@ The agent runs as a Gemini Live session with strict voice persona rules:
 - **Latency:** Gemini sends audio before the tool call completes — barge-in support via Twilio `clear` event
 - **Tool routing:** interprets natural language to one of 5 actions automatically
 
+### Latency Notes
+
+- Gemini turn detection is tuned for faster handoff with `prefixPaddingMs: 20` and `silenceDurationMs: 250`.
+- Early Twilio media frames are buffered while Gemini connects, so the caller's first words are less likely to be clipped.
+- InsForge CLI actions now run asynchronously, and realtime dashboard publishes no longer block the voice turn loop.
+
 ### Available Tools (11 total, 6 sponsors)
 
 | Tool | Sponsor | Trigger phrases | What it does |

@@ -5,6 +5,9 @@
   "functions": {
     "api/events.ts": {
       "maxDuration": 300
+    },
+    "api/alert/trigger.ts": {
+      "maxDuration": 30
     }
   }
 }

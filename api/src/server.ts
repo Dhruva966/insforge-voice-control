@@ -4,11 +4,17 @@ import { createServer } from "http";
 import { WebSocketServer } from "ws";
 import cors from "cors";
 import bodyParser from "body-parser";
+import path from "path";
+import { fileURLToPath } from "url";
 import { config } from "./config";
 import { voiceRouter } from "./routes/voice";
 import { handleMediaStream } from "./routes/mediaStream";
 import { slackRouter } from "./routes/slack";
 import { alertRouter } from "./routes/alert";
+import { eventsRouter } from "./routes/events";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const WEB_DIR = path.resolve(__dirname, "../../web/public");
 
 const app = express();
 app.use(cors());
@@ -23,8 +29,12 @@ app.use(bodyParser.json({ verify: captureRawBody }));
 app.use("/voice", voiceRouter);
 app.use("/slack", slackRouter);
 app.use("/alert", alertRouter);
+app.use("/api/events", eventsRouter);
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
+
+// Serve dashboard locally — avoids needing Vercel dev for the alert proxy
+app.use(express.static(WEB_DIR));
 
 const server = createServer(app);
 
