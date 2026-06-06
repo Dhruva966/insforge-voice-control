@@ -1,6 +1,7 @@
-import { GoogleGenAI, Modality, StartSensitivity, EndSensitivity } from "@google/genai";
+import { Modality, StartSensitivity, EndSensitivity } from "@google/genai";
 import { config } from "../../config";
 import { twilioToGemini, geminiToTwilio } from "./audioConverter";
+import { ai } from "./client";
 import { INSFORGE_TOOLS } from "./tools";
 import { INSFORGE_AGENT_SYSTEM } from "./systemPrompt";
 import { executeTool, getSponsor } from "../insforge/actions";
@@ -12,7 +13,25 @@ export interface GeminiHandle {
   actionCount: number;
 }
 
-const ai = new GoogleGenAI({ apiKey: config.GEMINI_API_KEY });
+interface Transcription {
+  finished?: boolean;
+  text?: string;
+}
+
+function broadcastTranscript(
+  transcript: Transcription | undefined,
+  callSid: string,
+  role: "user" | "agent"
+): void {
+  if (!transcript?.finished || !transcript.text?.trim()) return;
+  void broadcastEvent({
+    type: "transcript",
+    callSid,
+    role,
+    text: transcript.text.trim(),
+    timestamp: new Date().toISOString(),
+  }).catch((err) => console.error(`[${callSid}] ${role} transcript broadcast error:`, err));
+}
 
 export async function openGeminiSession(
   callSid: string,
@@ -50,27 +69,8 @@ export async function openGeminiSession(
           onAudio(geminiToTwilio(msg.data));
         }
 
-        const userTranscript = msg.serverContent?.inputTranscription;
-        if (userTranscript?.finished && userTranscript.text?.trim()) {
-          void broadcastEvent({
-            type: "transcript",
-            callSid,
-            role: "user",
-            text: userTranscript.text.trim(),
-            timestamp: new Date().toISOString(),
-          }).catch((err) => console.error(`[${callSid}] user transcript broadcast error:`, err));
-        }
-
-        const agentTranscript = msg.serverContent?.outputTranscription;
-        if (agentTranscript?.finished && agentTranscript.text?.trim()) {
-          void broadcastEvent({
-            type: "transcript",
-            callSid,
-            role: "agent",
-            text: agentTranscript.text.trim(),
-            timestamp: new Date().toISOString(),
-          }).catch((err) => console.error(`[${callSid}] agent transcript broadcast error:`, err));
-        }
+        broadcastTranscript(msg.serverContent?.inputTranscription, callSid, "user");
+        broadcastTranscript(msg.serverContent?.outputTranscription, callSid, "agent");
 
         if (msg.toolCall?.functionCalls?.length) {
           onToolCallStart();

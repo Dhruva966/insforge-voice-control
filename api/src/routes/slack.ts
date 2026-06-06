@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { executeTool } from "../services/insforge/actions.js";
+import { postSlackWebhook } from "../utils/slack.js";
 
 const router = Router();
 
@@ -35,11 +36,7 @@ function parseGojoCommand(text: string): { tool: string; params: Record<string, 
 }
 
 async function postSlackResponse(url: string, text: string): Promise<void> {
-  await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ response_type: "in_channel", text }),
-  }).catch((err) => console.error("[slack] response_url error:", err));
+  await postSlackWebhook(url, { response_type: "in_channel", text }, true);
 }
 
 // POST /slack/command — receives Slack /gojo slash command

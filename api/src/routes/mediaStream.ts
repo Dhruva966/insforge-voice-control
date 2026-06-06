@@ -15,6 +15,12 @@ export function handleMediaStream(ws: WebSocket): void {
   let gemini: GeminiHandle | null = null;
   let completed = false;
 
+  function wsSend(payload: Record<string, unknown>): void {
+    if (ws.readyState === WebSocket.OPEN && streamSid) {
+      ws.send(JSON.stringify(payload));
+    }
+  }
+
   async function finalize() {
     if (completed || !callSid) return;
     completed = true;
@@ -44,9 +50,7 @@ export function handleMediaStream(ws: WebSocket): void {
       gemini = await openGeminiSession(
         callSid,
         (base64Mulaw) => {
-          if (ws.readyState === WebSocket.OPEN && streamSid) {
-            ws.send(JSON.stringify({ event: "media", streamSid, media: { payload: base64Mulaw } }));
-          }
+          wsSend({ event: "media", streamSid, media: { payload: base64Mulaw } });
         },
         (err) => {
           console.error(`[${callSid}] Gemini error:`, err.message);
@@ -54,9 +58,7 @@ export function handleMediaStream(ws: WebSocket): void {
         },
         () => {
           // barge-in: tool call started, clear Twilio's playback buffer
-          if (ws.readyState === WebSocket.OPEN && streamSid) {
-            ws.send(JSON.stringify({ event: "clear", streamSid }));
-          }
+          wsSend({ event: "clear", streamSid });
         }
       ).catch((err) => {
         console.error(`[${callSid}] failed to open Gemini session:`, err);
