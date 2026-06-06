@@ -1,10 +1,16 @@
 import WebSocket from "ws";
 import { completeSession } from "../services/insforge/sessions";
 import { openGeminiSession, GeminiHandle } from "../services/gemini/liveSession";
+import { consumeAlert } from "../services/alert/store";
 
 interface TwilioFrame {
   event: string;
-  start?: { callSid: string; streamSid: string; mediaFormat?: { encoding: string; sampleRate: number } };
+  start?: {
+    callSid: string;
+    streamSid: string;
+    mediaFormat?: { encoding: string; sampleRate: number };
+    customParameters?: Record<string, string>;
+  };
   media?: { payload: string };
   stop?: { callSid: string };
 }
@@ -39,7 +45,11 @@ export function handleMediaStream(ws: WebSocket): void {
       callSid = frame.start.callSid;
       streamSid = frame.start.streamSid;
 
-      console.log(`[${callSid}] call started, stream ${streamSid}`);
+      // Check for alert context passed via Twilio Stream custom parameters
+      const alertId = frame.start.customParameters?.alertId;
+      const alertCtx = alertId ? consumeAlert(alertId) : null;
+
+      console.log(`[${callSid}] call started, stream ${streamSid}${alertCtx ? ` (alert: ${alertCtx.id})` : ""}`);
 
       gemini = await openGeminiSession(
         callSid,
@@ -57,7 +67,8 @@ export function handleMediaStream(ws: WebSocket): void {
           if (ws.readyState === WebSocket.OPEN && streamSid) {
             ws.send(JSON.stringify({ event: "clear", streamSid }));
           }
-        }
+        },
+        alertCtx ?? undefined
       ).catch((err) => {
         console.error(`[${callSid}] failed to open Gemini session:`, err);
         ws.close();

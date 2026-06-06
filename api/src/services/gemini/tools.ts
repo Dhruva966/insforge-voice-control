@@ -99,6 +99,36 @@ export const INSFORGE_TOOLS: FunctionDeclaration[] = [
     },
   },
   {
+    name: "spawn_devin_agent",
+    description: "Spawn a Devin AI coding agent that works on the gojo-mock-api GitHub repo. Use for larger tasks: add features, fix bugs, refactor code, write tests, open PRs. Multiple agents can run in parallel.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        task: {
+          type: Type.STRING,
+          description: "Plain-English description of what Devin should implement or fix in the repo",
+        },
+        title: {
+          type: Type.STRING,
+          description: "Short title for the Devin session (optional)",
+        },
+      },
+      required: ["task"],
+    },
+  },
+  {
+    name: "send_agent_message",
+    description: "Send a follow-up instruction to a running Devin coding agent. Use when the user refines or redirects an agent mid-task.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        sessionId: { type: Type.STRING, description: "Devin session ID to send the message to" },
+        message:   { type: Type.STRING, description: "Follow-up instruction for the agent" },
+      },
+      required: ["sessionId", "message"],
+    },
+  },
+  {
     name: "send_slack",
     description: "Send a Slack notification to the team channel via webhook — use to share diffs, summaries, alerts, or coding agent results. Also auto-triggered after spawn_coding_agent completes.",
     parameters: {

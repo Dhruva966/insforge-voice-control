@@ -5,8 +5,10 @@ import { join } from "path";
 import twilio from "twilio";
 import { GoogleGenAI } from "@google/genai";
 import { config } from "../../config.js";
+import { createDevinSession, pollDevinSession, sendDevinMessage } from "../devin/client.js";
+import { broadcastEvent } from "./realtime.js";
 
-export type ActionResult = { result: unknown; diff: string; action: string; sponsor?: string };
+export type ActionResult = { result: unknown; diff: string; action: string; sponsor?: string; narration?: string; sessionId?: string; prUrl?: string };
 
 export async function executeTool(name: string, params: Record<string, string>): Promise<ActionResult> {
   switch (name) {
@@ -18,7 +20,9 @@ export async function executeTool(name: string, params: Record<string, string>):
     case "send_sms":           return sendSms(params.to ?? "", params.message ?? "");
     case "spawn_coding_agent": return spawnCodingAgent(params.task ?? "");
     case "analyze_with_ai":    return analyzeWithAI(params.question ?? "", params.data ?? "");
-    case "send_slack":         return sendSlack(params.message ?? "");
+    case "send_slack":          return sendSlack(params.message ?? "");
+    case "spawn_devin_agent":   return spawnDevinAgent(params.task ?? "", params.title, params.callSid);
+    case "send_agent_message":  return sendAgentMessage(params.sessionId ?? "", params.message ?? "");
     default: throw new Error(`Unknown tool: ${name}`);
   }
 }
@@ -47,6 +51,10 @@ function cli(...args: string[]): string {
   return execFileSync("npx", ["@insforge/cli", ...args], { encoding: "utf8", timeout: 15000 });
 }
 
+// Active Devin sessions for routing (sessionId → callSid)
+export const activeDevinSessions = new Map<string, { callSid: string; task: string; num: number }>();
+let devinSessionSeq = 0;
+
 const TOOL_SPONSORS: Record<string, string> = {
   run_sql:            "InsForge · Postgres",
   add_index:          "InsForge · Postgres",
@@ -57,6 +65,8 @@ const TOOL_SPONSORS: Record<string, string> = {
   spawn_coding_agent: "Replicas · Coding Agent",
   analyze_with_ai:    "Gemini · AI Gateway",
   send_slack:         "Slack · Webhooks",
+  spawn_devin_agent:  "Devin · Cognition AI",
+  send_agent_message: "Devin · Cognition AI",
 };
 
 export function getSponsor(tool: string): string {
@@ -208,6 +218,8 @@ async function spawnCodingAgent(task: string): Promise<ActionResult> {
   const diff = agentResult.diff ?? `// Replicas agent ${agentId} — task queued\n// Task: ${task}`;
   const files = agentResult.filesChanged ?? [];
 
+  const narration = await generateNarration(task, diff, files);
+
   // Auto-notify Slack when coding agent completes
   if (agentResult.status === "completed" || agentResult.diff) {
     const preview = diff.substring(0, 500);
@@ -221,6 +233,7 @@ async function spawnCodingAgent(task: string): Promise<ActionResult> {
     result: { agentId, filesChanged: files, status: agentResult.status ?? "queued" },
     diff: `// Replicas Coding Agent — ${agentId}\n// Task: ${task}\n// Files: ${files.join(", ") || "pending"}\n\n${diff}`,
     sponsor: "Replicas · Coding Agent",
+    narration,
   };
 }
 
@@ -254,6 +267,91 @@ async function sendSlack(message: string): Promise<ActionResult> {
     diff: `-- Slack Notification\n${message}`,
     sponsor: "Slack · Webhooks",
   };
+}
+
+async function spawnDevinAgent(task: string, title?: string, callSid?: string): Promise<ActionResult> {
+  const session = await createDevinSession(task, { title });
+
+  devinSessionSeq++;
+  const num = devinSessionSeq;
+  const sid = callSid ?? "unknown";
+
+  activeDevinSessions.set(session.session_id, { callSid: sid, task, num });
+
+  // Broadcast start event (non-blocking — we don't await the full poll)
+  void broadcastEvent({
+    type: "devin_agent_started",
+    callSid: sid,
+    sessionId: session.session_id,
+    sessionUrl: session.url,
+    task,
+  }).catch((err) => console.error("[devin] broadcast start error:", err));
+
+  // Poll in background — don't block the voice call
+  void pollDevinSession(
+    session.session_id,
+    async (s) => {
+      const narration = s.status_detail ?? `Agent ${num} status: ${s.status}`;
+      await broadcastEvent({
+        type: "devin_agent_update",
+        callSid: sid,
+        sessionId: session.session_id,
+        narration,
+      }).catch(() => { /* ignore */ });
+    },
+    120_000
+  ).then(async (final) => {
+    const prUrl = final.pull_requests?.[0]?.url;
+    const narration = await generateNarration(task, "", []);
+    await broadcastEvent({
+      type: "devin_agent_done",
+      callSid: sid,
+      sessionId: session.session_id,
+      sessionUrl: final.url,
+      narration: narration || `Agent ${num} completed: ${task}`,
+      prUrl,
+    }).catch(() => { /* ignore */ });
+
+    if (config.SLACK_WEBHOOK_URL) {
+      await notifySlackInternal(
+        `*@gojo Devin agent done* (Agent ${num})\nTask: ${task}\n${prUrl ? `PR: ${prUrl}` : "No PR opened"}`
+      );
+    }
+    activeDevinSessions.delete(session.session_id);
+  }).catch((err) => console.error(`[devin] poll error for ${session.session_id}:`, err));
+
+  return {
+    action: "spawn_devin_agent",
+    result: { sessionId: session.session_id, sessionUrl: session.url, status: "spawned" },
+    diff: `// Devin Agent ${num} — ${session.session_id}\n// Task: ${task}\n// View live: ${session.url}`,
+    sponsor: "Devin · Cognition AI",
+    sessionId: session.session_id,
+  };
+}
+
+async function sendAgentMessage(sessionId: string, message: string): Promise<ActionResult> {
+  await sendDevinMessage(sessionId, message);
+  const entry = activeDevinSessions.get(sessionId);
+  if (entry && config.SLACK_WEBHOOK_URL) {
+    await notifySlackInternal(`*@gojo → Agent ${entry.num}*\n"${message}"`);
+  }
+  return {
+    action: "send_agent_message",
+    result: { sessionId, status: "delivered" },
+    diff: `// Follow-up to Devin session ${sessionId}\n// Message: ${message}`,
+    sponsor: "Devin · Cognition AI",
+  };
+}
+
+async function generateNarration(task: string, diff: string, _files: string[]): Promise<string> {
+  try {
+    const ai = new GoogleGenAI({ apiKey: config.GEMINI_API_KEY });
+    const prompt = `In exactly one sentence (max 20 words), describe what this coding task does for a non-technical audience.\nTask: ${task}\nDiff preview: ${diff.substring(0, 300)}`;
+    const res = await ai.models.generateContent({ model: "gemini-2.0-flash", contents: prompt });
+    return res.text?.trim() ?? "";
+  } catch {
+    return "";
+  }
 }
 
 async function notifySlackInternal(message: string): Promise<void> {

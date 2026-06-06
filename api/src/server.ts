@@ -1,5 +1,5 @@
 import "dotenv/config";
-import express from "express";
+import express, { Request } from "express";
 import { createServer } from "http";
 import { WebSocketServer } from "ws";
 import cors from "cors";
@@ -8,14 +8,21 @@ import { config } from "./config";
 import { voiceRouter } from "./routes/voice";
 import { handleMediaStream } from "./routes/mediaStream";
 import { slackRouter } from "./routes/slack";
+import { alertRouter } from "./routes/alert";
 
 const app = express();
 app.use(cors());
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
+
+function captureRawBody(req: Request, _res: express.Response, buf: Buffer): void {
+  (req as Request & { rawBody?: string }).rawBody = buf.toString("utf8");
+}
+
+app.use(bodyParser.urlencoded({ extended: false, verify: captureRawBody }));
+app.use(bodyParser.json({ verify: captureRawBody }));
 
 app.use("/voice", voiceRouter);
 app.use("/slack", slackRouter);
+app.use("/alert", alertRouter);
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
 

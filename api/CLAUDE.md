@@ -48,5 +48,7 @@ Codec: `alawmulaw` package. Code: `src/services/gemini/audioConverter.ts` (copy 
 
 ## Security
 
-- Twilio signature validated in `middleware/twilioValidate.ts` (skip in development)
+- Twilio signature validated in `middleware/twilioValidate.ts`
+- Set `DISABLE_TWILIO_SIGNATURE_VALIDATION=true` only for explicit local testing, never in production
+- Slack slash commands require a valid `SLACK_SIGNING_SECRET`
 - `runSqlQuery` rejects any SQL that doesn't start with SELECT

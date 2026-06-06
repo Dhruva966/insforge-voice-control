@@ -3,7 +3,7 @@
 ## Local Development
 
 ```bash
-# 1. Fill .env (see Environment Variables section below)
+# 1. Fill the repo-root .env (see Environment Variables section below)
 # 2. Install and start API
 cd api
 npm install
@@ -36,8 +36,10 @@ npx @insforge/cli link    # link to your InsForge project
 # Verify connection
 npx @insforge/cli current
 
-# Run migrations
+# Run migrations from /db because the CLI resolves migrations/ relative to cwd
+cd db
 npx @insforge/cli db migrations up --all
+cd ..
 
 # Verify tables exist
 npx @insforge/cli db query "SELECT table_name FROM information_schema.tables WHERE table_schema='public'"
@@ -65,7 +67,7 @@ After Vercel deploy, the dashboard can keep using `const SSE_URL = "/api/events"
 
 ## Environment Variables
 
-### api/.env (copy from root .env)
+### repo-root .env
 
 ```bash
 # Required
@@ -82,9 +84,12 @@ INSFORGE_URL=                           # npx @insforge/cli current
 INSFORGE_KEY=                           # InsForge project settings / linked project key
 
 REPLICAS_API_KEY=                       # app.tryreplicas.com → API Keys
+SLACK_SIGNING_SECRET=                   # required for POST /slack/command
+SLACK_WEBHOOK_URL=                      # optional, for send_slack notifications
 
 NODE_ENV=development                    # development | production
 PORT=3000
+DISABLE_TWILIO_SIGNATURE_VALIDATION=false  # set true only for manual local testing; never in production
 ```
 
 ### web/ Vercel env vars

@@ -18,6 +18,10 @@ const schema = z.object({
 
   REPLICAS_API_KEY: z.string().optional(),
 
+  DEVIN_API_KEY: z.string().optional(),
+  DEVIN_ORG_ID: z.string().optional(),   // from app.devin.ai Settings → API Keys → Org ID
+  DEVIN_REPO_URL: z.string().optional(), // default: gojo-mock-api repo
+
   SLACK_WEBHOOK_URL: z.string().url().optional(),
   SLACK_SIGNING_SECRET: z.string().optional(),
 

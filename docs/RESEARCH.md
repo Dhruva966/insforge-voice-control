@@ -53,12 +53,12 @@ const insforge = createAdminClient({
 
 ```typescript
 // Shape B is correct: insforge.database.from("table")
-insforge.database.from("calls").insert({...})
-insforge.database.from("calls").select("*").eq("call_sid", id)
-insforge.database.from("calls").update({...}).eq("call_sid", id)
+insforge.database.from("voice_calls").insert([{ ... }])
+insforge.database.from("voice_calls").select("*").eq("call_sid", id)
+insforge.database.from("voice_calls").update({ ... }).eq("call_sid", id)
 
 // Returns { data, error } — always check error before proceeding
-const result = await insforge.database.from("calls").insert({...});
+const result = await insforge.database.from("voice_calls").insert([{ ... }]);
 if (result.error) throw new Error(result.error.message);
 ```
 
@@ -176,10 +176,11 @@ npx @insforge/cli db --help
 ### Running from code (actions.ts)
 
 ```typescript
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 
-const output = execSync(
-  `npx @insforge/cli db query ${JSON.stringify(sql)} --json`,
+const output = execFileSync(
+  "npx",
+  ["@insforge/cli", "db", "query", sql, "--json"],
   { encoding: "utf8", timeout: 15000 }
 );
 const rows = JSON.parse(output);
@@ -480,15 +481,10 @@ ngrok http 3000
 
 ## 7. Replicas API
 
-### ⚠️ STRETCH GOAL — verify before implementing
-
-Check https://docs.tryreplicas.com at hackathon start for exact endpoint paths.
-DO NOT trial-and-error the API.
-
-### Suspected endpoints (unconfirmed)
+### VERIFIED in current repo
 
 ```
-POST /v1/replica       (singular — Codex flagged plural /v1/replicas may be wrong)
+POST /v1/replica
 GET  /v1/replicas/{id} (poll for status)
 ```
 

@@ -106,7 +106,7 @@ npx @insforge/cli login
 npx @insforge/cli link
 npx @insforge/cli current
 npx @insforge/cli db query "SELECT 1"
-npx @insforge/cli db migrations up --all
+cd db && npx @insforge/cli db migrations up --all
 npx @insforge/cli functions deploy slug --file ./fn.ts
 npx @insforge/cli logs insforge.logs
 npx @insforge/cli logs function.logs --json
