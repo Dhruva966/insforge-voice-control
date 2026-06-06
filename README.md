@@ -1,69 +1,406 @@
-# Insforge Voice Control
+<div align="center">
 
-**InsForge Hackathon** — Solo build, ~6 hours.
+# InsForge Voice Control
 
-Call a Twilio number. Talk to a Gemini Flash voice agent. Watch your InsForge infrastructure change in real time on a live dashboard.
+**Control your cloud infrastructure with your voice.**
+
+[![Node.js](https://img.shields.io/badge/Node.js-22.x-339933?logo=node.js&logoColor=white)](https://nodejs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Gemini](https://img.shields.io/badge/Gemini-3.1_Flash_Live-4285F4?logo=google&logoColor=white)](https://deepmind.google/technologies/gemini/)
+[![Twilio](https://img.shields.io/badge/Twilio-Voice-F22F46?logo=twilio&logoColor=white)](https://www.twilio.com)
+[![InsForge](https://img.shields.io/badge/InsForge-Postgres_+_Realtime-6366F1)](https://insforge.com)
+[![Vercel](https://img.shields.io/badge/Vercel-Dashboard-000000?logo=vercel&logoColor=white)](https://vercel.com)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue)](LICENSE)
+
+*InsForge Hackathon — Solo build, 6 hours*
+
+---
+
+**Call `+1 (925) 515-5725`**  →  speak a command  →  watch your infrastructure change live.
+
+</div>
+
+---
+
+## What This Does
+
+You dial a phone number. A voice AI answers — "InsForge Control online. What do you need?" — and you talk to it like a senior engineer on-call. It executes real database queries, creates indexes, deploys edge functions, and tails logs against your live InsForge project. Every action streams to a web dashboard in real time: you see the SQL diff, the execution result, and a log of everything the agent touched.
+
+No GUI. No terminal. Just a phone call.
+
+---
 
 ## Architecture
 
-```
-Caller → Twilio (+19255155725)
-       → POST /voice → TwiML <Connect><Stream>
-       → WebSocket /media-stream
-       → Gemini Live API (gemini-3.1-flash-live-preview)
-       → Tool calls → InsForge SDK (SQL, indexes, logs, edge functions)
-       → InsForge Realtime "voice-ops" channel
-       → Vercel SSE /api/events
-       → Dashboard (live diff viewer, exec log, call status)
+```mermaid
+graph TD
+    A["📞 Caller\n+1 925 515 5725"] -->|PSTN| B["Twilio Voice\nPOST /voice → TwiML"]
+    B -->|WebSocket\nmulaw 8kHz| C["Express Server\n/media-stream"]
+    C -->|PCM16 16kHz| D["Gemini Live API\ngemini-3.1-flash-live-preview"]
+    D -->|PCM16 24kHz| C
+    D -->|Tool calls| E["InsForge SDK\nAction Executor"]
+    E -->|SQL / CLI| F["InsForge Postgres\nvoice_calls · events"]
+    E -->|publish| G["InsForge Realtime\nvoice-ops channel"]
+    G -->|subscribe| H["Vercel SSE Function\n/api/events"]
+    H -->|EventSource| I["Dashboard\nweb/public/index.html"]
+    C -->|TwiML audio| A
+
+    style A fill:#1a1a2e,color:#e0e0e0,stroke:#6366F1
+    style B fill:#F22F46,color:#fff,stroke:#F22F46
+    style C fill:#339933,color:#fff,stroke:#339933
+    style D fill:#4285F4,color:#fff,stroke:#4285F4
+    style E fill:#6366F1,color:#fff,stroke:#6366F1
+    style F fill:#336791,color:#fff,stroke:#336791
+    style G fill:#6366F1,color:#fff,stroke:#6366F1
+    style H fill:#000,color:#fff,stroke:#555
+    style I fill:#161b22,color:#e6edf3,stroke:#30363d
 ```
 
-## Sponsors
+---
 
-| Sponsor | Role |
-|---------|------|
-| InsForge | Postgres + Realtime bus + Edge Functions + the infra being managed |
-| Twilio | Inbound voice call |
-| Vercel | Dashboard frontend |
-| Replicas | Code change coding agents (stretch) |
+## Audio Pipeline
+
+The system converts audio between three different formats across the call lifetime:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                          INBOUND (Caller → Gemini)                              │
+│                                                                                 │
+│  Twilio PSTN  ──►  mulaw 8kHz  ──►  decode  ──►  PCM16 16kHz  ──►  Gemini Live │
+│                  base64 160B            alawmulaw     base64                    │
+│                  20ms frames            (CJS shim)    audio/pcm;rate=16000      │
+│                                                                                 │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                          OUTBOUND (Gemini → Caller)                             │
+│                                                                                 │
+│  Gemini Live  ──►  PCM16 24kHz  ──►  resample  ──►  mulaw 8kHz  ──►  Twilio   │
+│                  base64 msg.data        16kHz↓        base64                   │
+│                                                        160B frames              │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Why three formats?** Twilio uses mulaw (G.711) at 8kHz — the global PSTN standard. Gemini Live requires linear PCM at 16kHz in, and outputs PCM at 24kHz. The `audioConverter.ts` service handles both legs. `alawmulaw` is loaded via `createRequire` (CJS shim) because the rest of the codebase is ESM-only.
+
+---
+
+## Voice Agent
+
+The agent runs as a Gemini Live session with strict voice persona rules:
+
+- **Identity:** "InsForge Control" — never identifies as AI
+- **Response length:** 1-2 sentences max (this is a phone call, not a chatbot)
+- **Latency:** Gemini sends audio before the tool call completes — barge-in support via Twilio `clear` event
+- **Tool routing:** interprets natural language to one of 5 actions automatically
+
+### Available Tools
+
+| Tool | Trigger phrases | What it does |
+|------|----------------|--------------|
+| `run_sql` | "show me...", "query...", "how many..." | Read-only SELECT on InsForge Postgres |
+| `add_index` | "add an index", "optimize...", "it's slow" | `CREATE INDEX IF NOT EXISTS` via CLI |
+| `deploy_edge_fn` | "deploy a function", "update the edge fn" | Writes TS to tmp file, deploys via CLI |
+| `get_logs` | "check logs", "any errors", "what happened" | Tails `insforge.logs` or `function.logs` |
+| `check_storage` | "show storage", "list buckets" | `npx @insforge/cli storage list` |
+
+### Security Model
+
+```
+run_sql       → SELECT-only guard + semicolon injection block
+add_index     → table/column validated against /^[a-zA-Z0-9_]+$/
+deploy_edge_fn → slug validated against /^[a-zA-Z0-9_-]+$/ + tmp file cleanup
+get_logs      → source validated against allowlist Set{"insforge.logs","function.logs"}
+all CLI calls → execFileSync (not execSync) — no shell injection surface
+```
+
+---
+
+## Realtime Event Flow
+
+Every action the agent takes emits structured events to the InsForge Realtime `voice-ops` channel. The Vercel SSE function subscribes and forwards them to the browser as `text/event-stream`.
+
+```mermaid
+sequenceDiagram
+    participant C as Caller
+    participant G as Gemini Live
+    participant B as Backend
+    participant IF as InsForge Realtime
+    participant D as Dashboard
+
+    C->>B: "Add an index on voice_calls.call_sid"
+    B->>G: PCM16 audio
+    G->>B: toolCall: add_index
+    B->>IF: publish("voice-ops", "call_event", {type:"action_proposed"})
+    IF->>D: SSE → action_proposed
+    Note over D: Shows SQL diff
+    B->>IF: publish("voice-ops", "call_event", {type:"action_executing"})
+    IF->>D: SSE → action_executing
+    Note over D: Spinner active
+    B->>B: execFileSync npx @insforge/cli db query ...
+    B->>IF: publish("voice-ops", "call_event", {type:"action_done", success:true})
+    IF->>D: SSE → action_done
+    Note over D: ✓ in exec log
+    G->>B: PCM16 "Index created on call_sid."
+    B->>C: mulaw audio
+```
+
+### Event Schema
+
+```typescript
+// All events share this base shape
+type CallEvent =
+  | { type: "call_started";    callSid: string; callerPhone: string; timestamp: string }
+  | { type: "transcript";      callSid: string; role: "agent"; text: string }
+  | { type: "action_proposed"; callSid: string; action: string; params: Record<string,string>; diff: string }
+  | { type: "action_executing";callSid: string; action: string }
+  | { type: "action_done";     callSid: string; action: string; result: string; success: boolean; durationMs: number }
+  | { type: "call_ended";      callSid: string; actionCount: number; duration: number }
+```
+
+---
+
+## Dashboard
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│ ●  InsForge Voice Control                         Call active           │
+├─────────────┬───────────────────────────────────────────────────────────┤
+│ CALL STATUS │                                                           │
+│  Active     │   -- SQL Query                                            │
+│  CA4f8...   │   SELECT * FROM voice_calls                               │
+│             │   ORDER BY started_at DESC                                │
+│ ACTIVE OP   │   LIMIT 5                                                 │
+│ ▶ run_sql   │                                                           │
+│             │   -- Result: 5 row(s)                                     │
+│ EXEC LOG    │                                                           │
+│ ✓ run_sql   │                                                           │
+│ ✓ add_index │                                                           │
+├─────────────┴───────────────────────────────────────────────────────────┤
+│ [agent] Index created on call_sid. Want me to check something else?     │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+Deployed at Vercel. `web/api/events.ts` is a serverless SSE function (`maxDuration: 300`) that subscribes to InsForge Realtime and streams events to the browser. Auto-reconnects on drop.
+
+---
+
+## Tech Stack
+
+| Layer | Technology | Why |
+|-------|-----------|-----|
+| Voice inbound | Twilio Voice + Media Streams | PSTN connectivity, WebSocket audio bridge |
+| Voice AI | Gemini 3.1 Flash Live (`@google/genai` v2.3) | Sub-second latency, native function calling, audio transcription |
+| Audio codec | `alawmulaw` (CJS shim via `createRequire`) | mulaw↔PCM16 conversion — no native deps |
+| HTTP + WS server | Express 4 + `ws` | Lightweight; WS and HTTP on same port |
+| Database | InsForge Postgres | Live infra target — schema is the demo |
+| Realtime bus | InsForge Realtime (`voice-ops` channel) | Push events to dashboard without polling |
+| Dashboard | Vanilla HTML + EventSource | Zero build step, CDN highlight.js for diffs |
+| SSE function | Vercel Serverless (`nodejs22.x`) | 300s max duration for persistent SSE |
+| Validation | Zod | Env var parsing with type safety |
+| Runtime | `tsx` + ESM (`"type":"module"`) | ESM-native required by `@insforge/sdk` |
+
+---
+
+## Database Schema
+
+```sql
+-- One row per Twilio call
+CREATE TABLE voice_calls (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  call_sid     TEXT UNIQUE NOT NULL,          -- Twilio CallSid
+  caller_phone TEXT,                          -- E.164 format
+  started_at   TIMESTAMPTZ DEFAULT now(),
+  ended_at     TIMESTAMPTZ,
+  duration_s   INT,
+  action_count INT DEFAULT 0,
+  status       TEXT DEFAULT 'active'
+               CHECK (status IN ('active', 'completed', 'error'))
+);
+
+-- Every realtime event persisted for replay / audit
+CREATE TABLE events (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  call_id    UUID REFERENCES voice_calls(id) ON DELETE CASCADE,
+  call_sid   TEXT NOT NULL,
+  type       TEXT NOT NULL,
+  payload    JSONB NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+RLS enabled on both tables. Admin key (`ik_03…`) bypasses RLS for backend writes.
+
+---
+
+## Directory Structure
+
+```
+insforge-voice-control/
+├── api/                        ← Voice agent backend (Node.js + Express + WS)
+│   ├── src/
+│   │   ├── server.ts           ← HTTP + WebSocket server entry
+│   │   ├── config.ts           ← Zod env validation
+│   │   ├── routes/
+│   │   │   ├── voice.ts        ← POST /voice → TwiML <Connect><Stream>
+│   │   │   └── mediaStream.ts  ← WS /media-stream handler
+│   │   ├── middleware/
+│   │   │   └── twilioValidate.ts
+│   │   ├── services/
+│   │   │   ├── gemini/
+│   │   │   │   ├── liveSession.ts    ← Gemini Live connect + tool dispatch
+│   │   │   │   ├── audioConverter.ts ← mulaw ↔ PCM16 codec
+│   │   │   │   ├── tools.ts          ← FunctionDeclaration[] for Gemini
+│   │   │   │   └── systemPrompt.ts   ← Agent persona + routing rules
+│   │   │   └── insforge/
+│   │   │       ├── client.ts         ← createAdminClient singleton
+│   │   │       ├── sessions.ts       ← createSession / completeSession
+│   │   │       ├── realtime.ts       ← connect → subscribe → publish
+│   │   │       └── actions.ts        ← 5 tool implementations + security
+│   │   └── utils/
+│   │       ├── phone.ts
+│   │       └── twiml.ts
+│   ├── package.json            ← "type":"module" required for ESM
+│   └── tsconfig.json           ← module:ESNext + moduleResolution:Bundler
+├── web/                        ← Dashboard (Vercel static + SSE function)
+│   ├── public/
+│   │   └── index.html          ← Single-file SPA, 4 panels, CDN deps only
+│   ├── api/
+│   │   └── events.ts           ← Vercel SSE function, InsForge Realtime relay
+│   ├── package.json
+│   └── vercel.json             ← outputDir:public, maxDuration:300
+├── db/
+│   └── migrations/
+│       └── 001_init.sql        ← voice_calls + events schema
+├── docs/
+│   └── RESEARCH.md             ← Verified API docs, CLI syntax, code patterns
+└── .env                        ← Never committed
+```
+
+---
 
 ## Quick Start
 
+### Prerequisites
+
+- Node.js 22+
+- [ngrok](https://ngrok.com) account (free tier works)
+- Twilio account with a phone number
+- InsForge project (free tier)
+- Google AI Studio API key
+
+### 1. Clone and install
+
 ```bash
-# 1. Set env vars in .env
-# 2. Start API
-cd api && npm install && npm run dev
-
-# 3. Expose via ngrok
-ngrok http 3000
-# Set TWILIO_WEBHOOK_BASE in .env
-
-# 4. Open dashboard locally
-open web/public/index.html
-
-# 5. Call +19255155725
+git clone https://github.com/Dhruva966/insforge-voice-control
+cd insforge-voice-control/api
+npm install
 ```
+
+### 2. Configure environment
+
+```bash
+cp .env.example .env
+```
+
+```env
+GEMINI_API_KEY=your_key
+GEMINI_MODEL=gemini-3.1-flash-live-preview
+GEMINI_VOICE=Puck
+
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN=your_auth_token
+TWILIO_PHONE_NUMBER=+1xxxxxxxxxx
+TWILIO_WEBHOOK_BASE=https://YOUR-NGROK.ngrok-free.app
+
+INSFORGE_URL=https://YOUR-PROJECT.us-east.insforge.app
+INSFORGE_KEY=ik_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+PORT=3000
+NODE_ENV=development
+```
+
+### 3. Apply database schema
+
+```bash
+# Apply migrations directly (CLI looks for migrations/ at project root)
+npx @insforge/cli link --api-base-url $INSFORGE_URL --api-key $INSFORGE_KEY
+npx @insforge/cli db query "$(cat db/migrations/001_init.sql)"
+```
+
+### 4. Start the API server
+
+```bash
+cd api && npm run dev
+# [server] listening on :3000
+```
+
+### 5. Expose via ngrok
+
+```bash
+ngrok http 3000
+# Copy the https URL → set TWILIO_WEBHOOK_BASE in .env
+```
+
+### 6. Configure Twilio webhook
+
+Twilio Console → Phone Numbers → your number → Voice Configuration:
+- **Webhook URL:** `https://YOUR-NGROK.ngrok-free.app/voice`
+- **HTTP Method:** POST
+
+### 7. Open dashboard
+
+```bash
+open web/public/index.html
+# Or deploy to Vercel (see below)
+```
+
+### 8. Call the number
+
+Dial your Twilio number. You'll hear:
+
+> *"InsForge Control online. What do you need?"*
+
+---
+
+## Vercel Deploy (Dashboard)
+
+```bash
+cd web/
+npm install
+vercel login
+vercel link
+vercel env add INSFORGE_URL production
+vercel env add INSFORGE_KEY production
+vercel --prod
+```
+
+The `vercel.json` is pre-configured: static files from `public/`, SSE function at `api/events.ts` with 300-second max duration.
+
+---
 
 ## Demo Script
 
-1. Dashboard open → "Waiting for call..."
-2. Call the number → hear "InsForge Control online. What do you need?"
-3. Say "Run a query — show me the last five calls"
-4. Watch SQL diff appear on dashboard
-5. Say "Add an index on the calls table, column call\_sid"
-6. Watch migration diff + exec log update
-7. Say "Check the InsForge logs"
-8. Hang up → "Call ended — 3 actions" shown
+| Step | You say | Dashboard shows |
+|------|---------|----------------|
+| Call the number | *(dials)* | Status dot goes green: "Call active" |
+| Agent answers | — | "InsForge Control online. What do you need?" in transcript |
+| Query the DB | "Show me the last five calls" | SQL diff: `SELECT * FROM voice_calls ORDER BY started_at DESC LIMIT 5` + result rows |
+| Add an index | "Add an index on voice_calls, column call_sid" | `CREATE INDEX IF NOT EXISTS idx_voice_calls_call_sid` diff → ✓ in exec log |
+| Check logs | "What's in the InsForge logs" | Last 20 log lines in diff viewer |
+| Hang up | — | Status dot goes red: "Call ended — 3 actions" |
 
-## Agents / Tools
+---
 
-The voice agent can execute 5 InsForge infra actions:
+## Sponsors
 
-- `run_sql` — read-only SQL queries on InsForge Postgres
-- `add_index` — CREATE INDEX migration via InsForge DB
-- `deploy_edge_fn` — deploy/update InsForge edge function
-- `get_logs` — read InsForge or function logs
-- `check_storage` — list storage buckets
+| | Sponsor | Contribution |
+|-|---------|-------------|
+| 🟣 | **InsForge** | Postgres database, Realtime event bus, Edge Functions — the actual infra being controlled |
+| 🔴 | **Twilio** | Inbound PSTN voice call, mulaw audio streaming via Media Streams WebSocket |
+| ⚫ | **Vercel** | Dashboard hosting, serverless SSE function with 300s connection support |
+| 🔵 | **Google Gemini** | Voice AI model with native function calling and bidirectional audio streaming |
+
+---
 
 ## Reference
 
-Architecture adapted from: https://github.com/gandhiaayush/dry-cleaning-voice-agent
+Architecture adapted from: [gandhiaayush/dry-cleaning-voice-agent](https://github.com/gandhiaayush/dry-cleaning-voice-agent)
