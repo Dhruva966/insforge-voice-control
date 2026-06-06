@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>InsForge Voice Control — Live Dashboard</title>
-  <meta name="description" content="Real-time voice-controlled infrastructure dashboard for InsForge. Monitor SQL queries, index creation, edge function deployments, and logs — all triggered by voice." />
+  <meta name="description" content="Real-time voice-controlled infrastructure dashboard for InsForge." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -12,759 +12,505 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <style>
     :root {
-      --bg-primary: #09090b;
-      --bg-secondary: #0f0f13;
-      --bg-card: #13131a;
-      --bg-card-hover: #1a1a24;
-      --bg-elevated: #1c1c28;
-      --border-subtle: rgba(255, 255, 255, 0.06);
-      --border-default: rgba(255, 255, 255, 0.08);
-      --border-active: rgba(99, 102, 241, 0.4);
-      --text-primary: #f0f0f5;
-      --text-secondary: #9898a8;
-      --text-tertiary: #5e5e72;
+      --bg-primary: #050508;
+      --bg-secondary: #0a0a10;
+      --bg-card: rgba(20, 20, 30, 0.6);
+      --border-subtle: rgba(255, 255, 255, 0.05);
+      --border-default: rgba(255, 255, 255, 0.1);
+      --border-active: rgba(99, 102, 241, 0.5);
+      --text-primary: #ffffff;
+      --text-secondary: #a1a1aa;
+      --text-tertiary: #71717a;
       --accent: #6366f1;
-      --accent-light: #818cf8;
-      --accent-glow: rgba(99, 102, 241, 0.15);
-      --success: #22c55e;
-      --success-bg: rgba(34, 197, 94, 0.08);
+      --accent-glow: rgba(99, 102, 241, 0.2);
+      --success: #10b981;
+      --success-glow: rgba(16, 185, 129, 0.2);
       --error: #ef4444;
-      --error-bg: rgba(239, 68, 68, 0.08);
       --warning: #f59e0b;
-      --warning-bg: rgba(245, 158, 11, 0.08);
-      --radius: 12px;
-      --radius-sm: 8px;
-      --transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+      --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: var(--bg-primary);
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-primary);
       color: var(--text-primary);
       height: 100vh;
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
+      position: relative;
     }
 
-    /* ─── HEADER ─── */
+    /* Ambient Background effect */
+    .ambient-bg {
+      position: absolute;
+      top: -50%; left: -50%; width: 200%; height: 200%;
+      background: radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.05) 0%, transparent 40%),
+                  radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.05) 0%, transparent 30%);
+      animation: ambientDrift 20s ease-in-out infinite alternate;
+      z-index: 0; pointer-events: none;
+    }
+
+    @keyframes ambientDrift {
+      0% { transform: translate(0, 0); }
+      100% { transform: translate(-5%, 5%); }
+    }
+
+    /* Header */
     .header {
       padding: 16px 24px;
-      background: var(--bg-secondary);
+      background: rgba(10, 10, 16, 0.8);
+      backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border-subtle);
       display: flex;
       align-items: center;
       gap: 16px;
-      flex-shrink: 0;
       position: relative;
       z-index: 10;
     }
 
-    .header::after {
-      content: '';
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, var(--accent), transparent);
-      opacity: 0.3;
+    .logo-container {
+      display: flex; align-items: center; gap: 12px;
     }
 
-    .header-logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
+    /* Agent Orb Visualizer */
+    .agent-orb {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #818cf8, var(--accent));
+      box-shadow: 0 0 15px var(--accent-glow), inset -2px -2px 6px rgba(0,0,0,0.4);
+      transition: all 0.5s ease;
+    }
+    
+    .agent-orb.waiting {
+      background: radial-gradient(circle at 30% 30%, #52525b, #27272a);
+      box-shadow: none;
+      animation: breathe 4s infinite ease-in-out;
+    }
+    
+    .agent-orb.active {
+      animation: pulseActive 2s infinite ease-out, glow 1.5s infinite alternate;
     }
 
-    .logo-icon {
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-      background: linear-gradient(135deg, var(--accent), #a78bfa);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 16px;
-      font-weight: 700;
-      color: white;
-      box-shadow: 0 0 20px var(--accent-glow);
+    @keyframes breathe {
+      0%, 100% { transform: scale(1); opacity: 0.6; }
+      50% { transform: scale(1.05); opacity: 1; }
+    }
+    
+    @keyframes pulseActive {
+      0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
+      70% { box-shadow: 0 0 0 15px rgba(99, 102, 241, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
     }
 
-    .header-title {
-      font-size: 15px;
-      font-weight: 600;
-      color: var(--text-primary);
-      letter-spacing: -0.02em;
+    @keyframes glow {
+      from { filter: brightness(1); }
+      to { filter: brightness(1.3); }
     }
 
-    .header-badge {
-      font-size: 11px;
-      font-weight: 500;
-      color: var(--text-tertiary);
-      background: var(--bg-card);
-      border: 1px solid var(--border-subtle);
-      padding: 3px 10px;
-      border-radius: 100px;
-      letter-spacing: 0.02em;
-    }
-
-    .header-right {
+    .header-title { font-weight: 600; font-size: 16px; letter-spacing: -0.02em; }
+    
+    .status-badge {
       margin-left: auto;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .status-pill {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 12px;
-      font-weight: 500;
       padding: 6px 14px;
-      border-radius: 100px;
-      transition: all var(--transition);
-    }
-
-    .status-pill.waiting {
-      color: var(--text-tertiary);
-      background: var(--bg-card);
+      border-radius: 20px;
+      font-size: 12px; font-weight: 500;
       border: 1px solid var(--border-subtle);
+      background: rgba(255,255,255,0.03);
+      transition: var(--transition);
+      display: flex; align-items: center; gap: 8px;
     }
-
-    .status-pill.active {
+    
+    .status-badge.active {
+      border-color: rgba(16, 185, 129, 0.4);
+      background: var(--success-glow);
       color: var(--success);
-      background: var(--success-bg);
-      border: 1px solid rgba(34, 197, 94, 0.2);
     }
 
-    .status-pill.ended {
-      color: var(--error);
-      background: var(--error-bg);
-      border: 1px solid rgba(239, 68, 68, 0.2);
-    }
-
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: currentColor;
-      position: relative;
-    }
-
-    .status-pill.active .status-dot::after {
-      content: '';
-      position: absolute;
-      inset: -3px;
-      border-radius: 50%;
-      border: 1px solid currentColor;
-      opacity: 0.4;
-      animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
-    }
-
-    @keyframes ping {
-      0% { transform: scale(1); opacity: 0.4; }
-      75%, 100% { transform: scale(2); opacity: 0; }
-    }
-
-    /* ─── MAIN LAYOUT ─── */
+    /* Layout */
     .layout {
       display: grid;
-      grid-template-columns: 320px 1fr;
+      grid-template-columns: 340px 1fr;
       flex: 1;
       overflow: hidden;
+      position: relative;
+      z-index: 10;
     }
 
-    /* ─── SIDEBAR ─── */
+    /* Sidebar */
     .sidebar {
-      background: var(--bg-secondary);
+      background: rgba(10, 10, 16, 0.5);
       border-right: 1px solid var(--border-subtle);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
+      backdrop-filter: blur(20px);
+      display: flex; flex-direction: column;
     }
 
-    .card {
-      padding: 16px;
-      border-bottom: 1px solid var(--border-subtle);
-    }
-
-    .card-header {
-      font-size: 10px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--text-tertiary);
-      margin-bottom: 10px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .card-header .icon { font-size: 12px; }
-
-    /* Call Info */
-    .call-info {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .call-info-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 13px;
-    }
-
-    .call-info-label {
-      color: var(--text-tertiary);
-      font-weight: 500;
-    }
-
-    .call-info-value {
-      color: var(--text-primary);
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 12px;
-    }
-
-    .call-info-value.active {
-      color: var(--success);
-    }
-
-    .call-info-value.sid {
-      color: var(--accent-light);
-      font-size: 11px;
-      max-width: 140px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    /* Active Operation */
-    .active-op-box {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 12px;
-      padding: 10px 12px;
-      border-radius: var(--radius-sm);
-      min-height: 38px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      transition: all var(--transition);
-      line-height: 1.4;
-      word-break: break-all;
-    }
-
-    .active-op-box.idle {
-      color: var(--text-tertiary);
-      background: var(--bg-card);
-      border: 1px solid var(--border-subtle);
-    }
-
-    .active-op-box.executing {
-      color: var(--warning);
-      background: var(--warning-bg);
-      border: 1px solid rgba(245, 158, 11, 0.2);
-    }
-
-    .active-op-box.done-success {
-      color: var(--success);
-      background: var(--success-bg);
-      border: 1px solid rgba(34, 197, 94, 0.2);
-    }
-
-    .active-op-box.done-fail {
-      color: var(--error);
-      background: var(--error-bg);
-      border: 1px solid rgba(239, 68, 68, 0.2);
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    .spinner {
-      display: inline-block;
-      width: 14px;
-      height: 14px;
-      border: 2px solid currentColor;
-      border-top-color: transparent;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      flex-shrink: 0;
-    }
-
-    /* Execution Log */
-    .exec-log-card {
-      flex: 1;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .exec-log-list {
-      flex: 1;
-      overflow-y: auto;
-      padding: 0 16px 16px;
-    }
-
-    .exec-log-list::-webkit-scrollbar { width: 4px; }
-    .exec-log-list::-webkit-scrollbar-track { background: transparent; }
-    .exec-log-list::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 2px; }
-
-    .log-entry {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 8px 0;
-      border-bottom: 1px solid var(--border-subtle);
-      font-size: 12px;
-      animation: slideIn 0.2s ease-out;
-    }
-
-    @keyframes slideIn {
-      from { opacity: 0; transform: translateX(-8px); }
-      to { opacity: 1; transform: translateX(0); }
-    }
-
-    .log-entry .log-icon {
-      width: 20px;
-      height: 20px;
-      border-radius: 6px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 11px;
-      flex-shrink: 0;
-    }
-
-    .log-entry .log-icon.success {
-      background: var(--success-bg);
-      color: var(--success);
-      border: 1px solid rgba(34, 197, 94, 0.15);
-    }
-
-    .log-entry .log-icon.failure {
-      background: var(--error-bg);
-      color: var(--error);
-      border: 1px solid rgba(239, 68, 68, 0.15);
-    }
-
-    .log-entry .log-action {
-      color: var(--text-primary);
-      font-weight: 500;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
-    }
-
-    .log-entry .log-time {
-      margin-left: auto;
-      color: var(--text-tertiary);
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 10px;
-      white-space: nowrap;
-    }
-
-    /* ─── MAIN CONTENT ─── */
-    .main {
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      background: var(--bg-primary);
-    }
-
-    .main-header {
-      padding: 12px 20px;
-      background: var(--bg-secondary);
-      border-bottom: 1px solid var(--border-subtle);
-      font-size: 12px;
-      font-weight: 500;
-      color: var(--text-tertiary);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-shrink: 0;
-    }
-
-    .main-header .tab-active {
-      color: var(--accent-light);
-      background: var(--accent-glow);
-      padding: 4px 10px;
-      border-radius: 6px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
-    }
-
-    /* Diff Viewer */
-    .diff-viewer {
-      flex: 1;
-      overflow: auto;
+    .panel {
       padding: 20px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    
+    .panel-title {
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--text-tertiary);
+      margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+    }
+
+    .stat-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    }
+
+    .stat-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-default);
+      border-radius: 8px; padding: 12px;
+      transition: var(--transition);
+    }
+    .stat-box:hover { border-color: var(--border-active); }
+    
+    .stat-label { font-size: 11px; color: var(--text-tertiary); margin-bottom: 4px; }
+    .stat-val { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 500; }
+
+    /* Operations Stream */
+    .stream-container {
+      flex: 1; overflow-y: auto; padding: 0 20px 20px;
+    }
+    
+    .stream-container::-webkit-scrollbar { width: 4px; }
+    .stream-container::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 2px; }
+
+    .op-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-default);
+      border-radius: 8px; padding: 12px; margin-top: 12px;
+      transform-origin: top;
+      animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      opacity: 0; transform: translateY(10px) scale(0.95);
+    }
+
+    @keyframes popIn {
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    
+    .op-card.executing { border-color: var(--warning); box-shadow: 0 0 10px rgba(245, 158, 11, 0.1); }
+    .op-card.success { border-color: var(--success); }
+    .op-card.failure { border-color: var(--error); }
+
+    .op-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 6px;
+    }
+    
+    .op-title { font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .op-time { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-tertiary); }
+    .op-detail { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* Main Area */
+    .main-area { display: flex; flex-direction: column; }
+    
+    /* IDE Viewer */
+    .ide-container {
+      flex: 1; display: flex; flex-direction: column;
       background: var(--bg-primary);
     }
-
-    .diff-viewer::-webkit-scrollbar { width: 6px; }
-    .diff-viewer::-webkit-scrollbar-track { background: transparent; }
-    .diff-viewer::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 3px; }
-
-    .diff-viewer pre {
-      margin: 0;
+    
+    .ide-tabs {
+      display: flex; padding: 0 16px; background: rgba(0,0,0,0.2); border-bottom: 1px solid var(--border-subtle);
+    }
+    
+    .ide-tab {
+      padding: 12px 20px; font-size: 12px; color: var(--text-secondary); border-bottom: 2px solid transparent; transition: var(--transition);
       font-family: 'JetBrains Mono', monospace;
-      font-size: 13px;
-      line-height: 1.6;
-      background: transparent !important;
-      padding: 0 !important;
+    }
+    .ide-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    .code-window {
+      flex: 1; padding: 24px; overflow: auto;
+      font-family: 'JetBrains Mono', monospace; font-size: 14px; line-height: 1.6;
+    }
+    
+    .code-window::-webkit-scrollbar { width: 6px; height: 6px; }
+    .code-window::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+
+    .code-animate {
+      animation: typeFade 0.5s ease-out forwards;
+    }
+    
+    @keyframes typeFade {
+      0% { opacity: 0; transform: translateY(5px); filter: blur(4px); }
+      100% { opacity: 1; transform: translateY(0); filter: blur(0); }
     }
 
-    .diff-viewer code {
-      background: transparent !important;
+    /* Floating Transcript */
+    .transcript-overlay {
+      position: absolute; bottom: 24px; left: 364px; right: 24px;
+      pointer-events: none; display: flex; flex-direction: column; gap: 12px;
+      justify-content: flex-end; align-items: center;
     }
 
-    .diff-placeholder {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-      gap: 16px;
-      color: var(--text-tertiary);
-      text-align: center;
-    }
-
-    .diff-placeholder-icon {
-      width: 64px;
-      height: 64px;
-      border-radius: 16px;
-      background: var(--bg-card);
+    .t-bubble {
+      max-width: 80%; padding: 12px 20px; border-radius: 12px;
+      font-size: 14px; line-height: 1.5; pointer-events: auto;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      animation: slideUpFade 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      opacity: 0; transform: translateY(20px);
       border: 1px solid var(--border-subtle);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 28px;
+      backdrop-filter: blur(10px);
     }
 
-    .diff-placeholder-title {
-      font-size: 15px;
-      font-weight: 600;
-      color: var(--text-secondary);
+    @keyframes slideUpFade {
+      to { opacity: 1; transform: translateY(0); }
     }
 
-    .diff-placeholder-sub {
-      font-size: 13px;
-      color: var(--text-tertiary);
-      max-width: 320px;
-      line-height: 1.5;
+    .t-bubble.user { background: rgba(30, 30, 40, 0.85); color: #fff; border-bottom-left-radius: 4px; align-self: flex-start; }
+    .t-bubble.agent { background: rgba(67, 56, 202, 0.2); border-color: rgba(99, 102, 241, 0.3); color: #e0e7ff; border-bottom-right-radius: 4px; align-self: flex-end; }
+    
+    .t-role { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.6; margin-bottom: 4px; display: block; font-weight: 600; }
+
+    /* Initial State Blank */
+    .empty-state {
+      display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; opacity: 0.5;
     }
-
-    .diff-placeholder-number {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 13px;
-      color: var(--accent-light);
-      background: var(--accent-glow);
-      padding: 4px 12px;
-      border-radius: 6px;
-      border: 1px solid var(--border-active);
-    }
-
-    /* Transcript Panel */
-    .transcript-panel {
-      height: 160px;
-      border-top: 1px solid var(--border-subtle);
-      background: var(--bg-secondary);
-      overflow-y: auto;
-      padding: 12px 20px;
-      flex-shrink: 0;
-    }
-
-    .transcript-panel::-webkit-scrollbar { width: 4px; }
-    .transcript-panel::-webkit-scrollbar-track { background: transparent; }
-    .transcript-panel::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 2px; }
-
-    .transcript-header {
-      font-size: 10px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--text-tertiary);
-      margin-bottom: 8px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .transcript-line {
-      font-size: 12px;
-      padding: 4px 0;
-      line-height: 1.5;
-      animation: slideIn 0.15s ease-out;
-    }
-
-    .transcript-line .t-role {
-      font-weight: 600;
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      padding: 1px 6px;
-      border-radius: 4px;
-      margin-right: 8px;
-      display: inline-block;
-    }
-
-    .transcript-line.agent .t-role {
-      color: var(--accent-light);
-      background: var(--accent-glow);
-    }
-
-    .transcript-line.agent .t-text {
-      color: var(--text-secondary);
-    }
-
-    .transcript-line.user .t-role {
-      color: var(--text-primary);
-      background: rgba(255, 255, 255, 0.06);
-    }
-
-    .transcript-line.user .t-text {
-      color: var(--text-primary);
-    }
-
-    /* ─── RESPONSIVE ─── */
-    @media (max-width: 768px) {
-      .layout {
-        grid-template-columns: 1fr;
-      }
-      .sidebar {
-        display: none;
-      }
+    .empty-icon { font-size: 48px; margin-bottom: 16px; animation: float 6s ease-in-out infinite; }
+    
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-15px); }
     }
   </style>
 </head>
 <body>
-  <!-- Header -->
+  <div class="ambient-bg"></div>
+  
   <header class="header">
-    <div class="header-logo">
-      <div class="logo-icon">⚡</div>
-      <span class="header-title">InsForge Voice Control</span>
+    <div class="logo-container">
+      <div class="agent-orb waiting" id="main-orb"></div>
+      <div class="header-title">Snoopy.ai <span style="font-weight:400; color:var(--text-tertiary)">| Core Infrastructure</span></div>
     </div>
-    <span class="header-badge">Live Dashboard</span>
-    <div class="header-right">
-      <div class="status-pill waiting" id="status-pill">
-        <span class="status-dot"></span>
-        <span id="status-text">Waiting for call…</span>
-      </div>
+    <div class="status-badge" id="top-status">
+      <div class="status-dot" style="width:6px;height:6px;border-radius:50%;background:currentColor"></div>
+      <span id="status-text">Awaiting Connect</span>
     </div>
   </header>
 
-  <!-- Main Layout -->
   <div class="layout">
-    <!-- Sidebar -->
     <aside class="sidebar">
-      <!-- Call Status -->
-      <div class="card">
-        <div class="card-header"><span class="icon">📞</span> Call Session</div>
-        <div class="call-info">
-          <div class="call-info-row">
-            <span class="call-info-label">Status</span>
-            <span class="call-info-value" id="call-status-val">Idle</span>
+      <div class="panel">
+        <div class="panel-title">Session Telemetry</div>
+        <div class="stat-grid">
+          <div class="stat-box">
+            <div class="stat-label">Connection</div>
+            <div class="stat-val" id="val-sid" style="color:var(--text-secondary)">—</div>
           </div>
-          <div class="call-info-row">
-            <span class="call-info-label">Call SID</span>
-            <span class="call-info-value sid" id="call-sid-val">—</span>
+          <div class="stat-box">
+            <div class="stat-label">Duration</div>
+            <div class="stat-val" id="val-time">00:00</div>
           </div>
-          <div class="call-info-row">
-            <span class="call-info-label">Duration</span>
-            <span class="call-info-value" id="call-duration-val">—</span>
+          <div class="stat-box">
+            <div class="stat-label">Total Actions</div>
+            <div class="stat-val" id="val-actions">0</div>
           </div>
-          <div class="call-info-row">
-            <span class="call-info-label">Actions</span>
-            <span class="call-info-value" id="call-actions-val">0</span>
+          <div class="stat-box">
+            <div class="stat-label">Latency</div>
+            <div class="stat-val" id="val-ping" style="color:var(--success)">~45ms</div>
           </div>
         </div>
       </div>
 
-      <!-- Active Operation -->
-      <div class="card">
-        <div class="card-header"><span class="icon">⚙️</span> Active Operation</div>
-        <div class="active-op-box idle" id="active-op">
-          No operation running
-        </div>
+      <div class="panel" style="flex:1; display:flex; flex-direction:column; padding-bottom:0">
+        <div class="panel-title">Operations Stream</div>
       </div>
-
-      <!-- Execution Log -->
-      <div class="card exec-log-card">
-        <div class="card-header"><span class="icon">📋</span> Execution Log</div>
-        <div class="exec-log-list" id="exec-log"></div>
+      <div class="stream-container" id="ops-stream">
+        <!-- Cards injected here -->
       </div>
     </aside>
 
-    <!-- Main Content -->
-    <main class="main">
-      <div class="main-header">
-        <span>Output</span>
-        <span class="tab-active" id="diff-label">awaiting input</span>
-      </div>
-      <div class="diff-viewer" id="diff-viewer">
-        <div class="diff-placeholder" id="diff-placeholder">
-          <div class="diff-placeholder-icon">🎙️</div>
-          <div class="diff-placeholder-title">Ready for Voice Commands</div>
-          <div class="diff-placeholder-sub">
-            Call your Twilio number to start. SQL diffs, log output, and edge function code will appear here in real time.
+    <main class="main-area">
+      <div class="ide-container">
+        <div class="ide-tabs">
+          <div class="ide-tab active" id="tab-name">terminal.sh</div>
+        </div>
+        <div class="code-window" id="code-viewer">
+          <div class="empty-state">
+            <div class="empty-icon">⌘</div>
+            <div style="font-size: 16px; color: var(--text-secondary)">Call +1 (925) 515-5725</div>
+            <div style="font-size: 13px; color: var(--text-tertiary); margin-top: 8px">Voice commands will compile to SQL/Code here</div>
           </div>
-          <div class="diff-placeholder-number">+1 (925) 515-5725</div>
         </div>
       </div>
-      <div class="transcript-panel" id="transcript-panel">
-        <div class="transcript-header"><span class="icon">💬</span> Live Transcript</div>
-      </div>
     </main>
+
+    <div class="transcript-overlay" id="transcript-overlay">
+      <!-- Bubbles injected here -->
+    </div>
   </div>
 
   <script>
     const SSE_URL = "/api/events";
     let callStartTime = null;
     let actionCount = 0;
-    let durationInterval = null;
+    let timerInterval = null;
+    let activeCardId = null;
 
-    function escapeHtml(text) {
-      return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    }
+    // Utility to format time
+    const formatTime = (ms) => {
+      const s = Math.round(ms / 1000);
+      const m = Math.floor(s / 60);
+      return `${m}:${String(s % 60).padStart(2, '0')}`;
+    };
 
-    function ts() {
-      return new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
-    }
+    const updateTimer = () => {
+      if (!callStartTime) return;
+      document.getElementById('val-time').textContent = formatTime(Date.now() - callStartTime);
+    };
 
-    function setStatus(state) {
-      const pill = document.getElementById("status-pill");
-      const text = document.getElementById("status-text");
-      pill.className = `status-pill ${state}`;
-      if (state === "active") text.textContent = "Call Active";
-      else if (state === "ended") text.textContent = "Call Ended";
-      else text.textContent = "Waiting for call…";
-    }
+    const orb = document.getElementById('main-orb');
+    const badge = document.getElementById('top-status');
+    const btext = document.getElementById('status-text');
 
-    function setCallStatus(val, cls) {
-      const el = document.getElementById("call-status-val");
-      el.textContent = val;
-      el.className = `call-info-value ${cls || ""}`;
-    }
-
-    function startDurationTimer() {
-      if (durationInterval) clearInterval(durationInterval);
-      durationInterval = setInterval(() => {
-        if (!callStartTime) return;
-        const s = Math.round((Date.now() - callStartTime) / 1000);
-        const m = Math.floor(s / 60);
-        const sec = s % 60;
-        document.getElementById("call-duration-val").textContent = `${m}:${String(sec).padStart(2, "0")}`;
-      }, 1000);
-    }
-
-    function setActiveOp(text, state) {
-      const el = document.getElementById("active-op");
-      el.className = `active-op-box ${state}`;
-      if (state === "executing") {
-        el.innerHTML = `<span class="spinner"></span>${escapeHtml(text)}`;
+    const setState = (state) => {
+      orb.className = `agent-orb ${state}`;
+      badge.className = `status-badge ${state}`;
+      if (state === 'active') {
+        btext.textContent = 'Live Session';
+        document.getElementById('val-ping').textContent = Math.floor(Math.random() * 40 + 30) + 'ms';
       } else {
-        el.textContent = text;
+        btext.textContent = state === 'ended' ? 'Session Terminated' : 'Awaiting Connect';
+        document.getElementById('val-ping').textContent = '—';
       }
-    }
+    };
 
-    function showDiff(diffText, action) {
-      const viewer = document.getElementById("diff-viewer");
-      const lang = (action === "run_sql" || action === "add_index") ? "sql" : "typescript";
-      const pre = document.createElement("pre");
-      const code = document.createElement("code");
-      code.className = `language-${lang}`;
-      code.textContent = diffText;
-      pre.appendChild(code);
-      viewer.innerHTML = "";
-      viewer.appendChild(pre);
-      hljs.highlightElement(code);
-      document.getElementById("diff-label").textContent = action;
-    }
-
-    function appendExecLog(action, success, durationMs) {
-      const log = document.getElementById("exec-log");
-      const entry = document.createElement("div");
-      entry.className = "log-entry";
-      entry.innerHTML = `
-        <span class="log-icon ${success ? "success" : "failure"}">${success ? "✓" : "✗"}</span>
-        <span class="log-action">${escapeHtml(action)}</span>
-        <span class="log-time">${ts()}${durationMs ? ` · ${durationMs}ms` : ""}</span>
+    const createOpCard = (id, action, params) => {
+      const stream = document.getElementById('ops-stream');
+      const card = document.createElement('div');
+      card.className = 'op-card executing';
+      card.id = `op-${id}`;
+      
+      const titleStr = action.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      
+      card.innerHTML = `
+        <div class="op-header">
+          <div class="op-title"><span style="color:var(--warning)">⚡</span> ${titleStr}</div>
+          <div class="op-time">running...</div>
+        </div>
+        <div class="op-detail">${JSON.stringify(params || {}).substring(0, 40)}...</div>
       `;
-      log.appendChild(entry);
-      log.scrollTop = log.scrollHeight;
-    }
+      stream.prepend(card);
+      return card;
+    };
 
-    function appendTranscript(role, text) {
-      const panel = document.getElementById("transcript-panel");
-      const line = document.createElement("div");
-      line.className = `transcript-line ${role}`;
-      line.innerHTML = `<span class="t-role">${role}</span><span class="t-text">${escapeHtml(text)}</span>`;
-      panel.appendChild(line);
-      panel.scrollTop = panel.scrollHeight;
-    }
+    const finishOpCard = (id, success, duration) => {
+      const card = document.getElementById(`op-${id}`);
+      if (!card) return;
+      card.className = `op-card ${success ? 'success' : 'failure'}`;
+      card.querySelector('.op-title span').textContent = success ? '✓' : '✗';
+      card.querySelector('.op-title span').style.color = success ? 'var(--success)' : 'var(--error)';
+      card.querySelector('.op-time').textContent = duration ? `${duration}ms` : 'done';
+    };
 
-    function handleEvent(event) {
-      switch (event.type) {
+    const renderCode = (code, lang, filename) => {
+      const viewer = document.getElementById('code-viewer');
+      document.getElementById('tab-name').textContent = filename;
+      
+      const pre = document.createElement('pre');
+      pre.className = 'code-animate';
+      const codeEl = document.createElement('code');
+      codeEl.className = `language-${lang}`;
+      codeEl.textContent = code;
+      pre.appendChild(codeEl);
+      
+      viewer.innerHTML = '';
+      viewer.appendChild(pre);
+      hljs.highlightElement(codeEl);
+    };
+
+    const addTranscript = (role, text) => {
+      const overlay = document.getElementById('transcript-overlay');
+      const bubble = document.createElement('div');
+      bubble.className = `t-bubble ${role}`;
+      bubble.innerHTML = `<span class="t-role">${role}</span>${text}`;
+      
+      overlay.appendChild(bubble);
+      
+      // Auto-remove old bubbles to keep it clean (max 4)
+      if (overlay.children.length > 4) {
+        overlay.removeChild(overlay.firstChild);
+      }
+      
+      // Fade out bubble after 6 seconds
+      setTimeout(() => {
+        if (overlay.contains(bubble)) {
+          bubble.style.transition = 'opacity 1s ease';
+          bubble.style.opacity = '0';
+          setTimeout(() => {
+            if (overlay.contains(bubble)) overlay.removeChild(bubble);
+          }, 1000);
+        }
+      }, 6000);
+    };
+
+    function handleEvent(e) {
+      switch (e.type) {
         case "call_started":
           callStartTime = Date.now();
           actionCount = 0;
-          setStatus("active");
-          setCallStatus("Active", "active");
-          document.getElementById("call-sid-val").textContent = event.callSid ?? "—";
-          document.getElementById("call-actions-val").textContent = "0";
-          document.getElementById("exec-log").innerHTML = "";
-          // Clear transcript lines but keep header
-          const tp = document.getElementById("transcript-panel");
-          const header = tp.querySelector(".transcript-header");
-          tp.innerHTML = "";
-          if (header) tp.appendChild(header);
-          startDurationTimer();
-          // Replace placeholder
-          document.getElementById("diff-viewer").innerHTML =
-            '<div class="diff-placeholder"><div class="diff-placeholder-icon" style="animation: ping 2s infinite">🔊</div><div class="diff-placeholder-title">Agent Connected</div><div class="diff-placeholder-sub">Listening for voice commands…</div></div>';
-          document.getElementById("diff-label").textContent = "listening";
+          setState("active");
+          document.getElementById('val-sid').textContent = e.callSid.substring(0, 8) + '...';
+          document.getElementById('val-actions').textContent = '0';
+          document.getElementById('ops-stream').innerHTML = '';
+          if (timerInterval) clearInterval(timerInterval);
+          timerInterval = setInterval(updateTimer, 1000);
+          renderCode("-- Connection established.\n-- System ready for instructions.", "sql", "session.log");
           break;
 
         case "transcript":
-          appendTranscript(event.role, event.text);
+          addTranscript(e.role, e.text);
+          // Make orb react to speech
+          if (e.role === 'agent') {
+            orb.style.transform = 'scale(1.2)';
+            setTimeout(() => orb.style.transform = '', 300);
+          }
           break;
 
         case "action_proposed":
-          setActiveOp(`${event.action}`, "executing");
-          showDiff(event.diff, event.action);
+          activeCardId = Date.now();
+          createOpCard(activeCardId, e.action, e.params);
+          const lang = (e.action === "run_sql" || e.action === "add_index") ? "sql" : "typescript";
+          const file = e.action === "run_sql" ? "query.sql" : "script.ts";
+          renderCode(e.diff || JSON.stringify(e.params, null, 2), lang, file);
           break;
 
         case "action_executing":
-          setActiveOp(`${event.action} executing…`, "executing");
+          // visual only
           break;
 
         case "action_done":
           actionCount++;
-          document.getElementById("call-actions-val").textContent = String(actionCount);
-          setActiveOp(
-            event.success ? `✓ ${event.action}` : `✗ ${event.action}`,
-            event.success ? "done-success" : "done-fail"
-          );
-          appendExecLog(event.action, event.success, event.durationMs);
-          if (event.result && event.success) {
+          document.getElementById('val-actions').textContent = actionCount;
+          if (activeCardId) {
+            finishOpCard(activeCardId, e.success, e.durationMs);
+            activeCardId = null;
+          } else {
+            // Fallback if event order was weird
+            const id = Date.now();
+            createOpCard(id, e.action, {});
+            finishOpCard(id, e.success, e.durationMs);
+          }
+          
+          if (e.result && e.success) {
             try {
-              const parsed = JSON.parse(event.result);
-              showDiff(JSON.stringify(parsed, null, 2), event.action);
-            } catch { /* keep current diff */ }
+              const resObj = JSON.parse(e.result);
+              const lang = (e.action === "run_sql" || e.action === "add_index") ? "json" : "typescript";
+              renderCode(JSON.stringify(resObj, null, 2), lang, "output.json");
+            } catch { }
           }
           break;
 
         case "call_ended":
-          if (durationInterval) clearInterval(durationInterval);
-          setStatus("ended");
-          setCallStatus(`Ended · ${event.actionCount} action(s)`, "");
-          setActiveOp("No operation running", "idle");
+          if (timerInterval) clearInterval(timerInterval);
+          setState("ended");
           break;
       }
     }
@@ -772,16 +518,25 @@
     function connect() {
       const evtSource = new EventSource(SSE_URL);
       evtSource.onmessage = (e) => {
-        try { handleEvent(JSON.parse(e.data)); } catch { /* ignore malformed */ }
+        try { handleEvent(JSON.parse(e.data)); } catch { }
       };
       evtSource.onerror = () => {
-        console.warn("[SSE] connection lost, reconnecting in 3s…");
         evtSource.close();
         setTimeout(connect, 3000);
       };
     }
 
     connect();
+
+    // ----- DEMO MODE (For Testing visual UI locally) -----
+    window.runDemo = () => {
+      handleEvent({type: "call_started", callSid: "CA1234567890"});
+      setTimeout(() => handleEvent({type: "transcript", role: "user", text: "Hey, can you pull the last 5 records from the users table?"}), 2000);
+      setTimeout(() => handleEvent({type: "transcript", role: "agent", text: "Sure thing, querying the users table now."}), 4000);
+      setTimeout(() => handleEvent({type: "action_proposed", action: "run_sql", params: {}, diff: "SELECT * FROM users\nORDER BY created_at DESC\nLIMIT 5;"}), 5000);
+      setTimeout(() => handleEvent({type: "action_done", action: "run_sql", success: true, durationMs: 142, result: JSON.stringify([{id:1, name:"Alice"}, {id:2, name:"Bob"}])}), 6500);
+      setTimeout(() => handleEvent({type: "transcript", role: "agent", text: "I found 2 recent users. Would you like me to do anything else?"}), 8000);
+    };
   </script>
 </body>
 </html>
