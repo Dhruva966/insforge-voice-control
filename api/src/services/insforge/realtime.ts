@@ -11,16 +11,29 @@ export type CallEvent =
 const CHANNEL = "voice-ops";
 const EVENT_NAME = "call_event";
 
-let initialized = false;
+let readyPromise: Promise<void> | null = null;
 
-async function ensureReady() {
-  if (initialized) return;
+async function connectAndSubscribe(): Promise<void> {
   await insforge.realtime.connect();
   const response = await insforge.realtime.subscribe(CHANNEL);
   if (!response.ok) {
     throw new Error(response.error?.message ?? `Failed to subscribe to ${CHANNEL}`);
   }
-  initialized = true;
+}
+
+async function ensureReady() {
+  // Try to use existing connection if healthy
+  if (readyPromise && insforge.realtime.isConnected) {
+    return readyPromise;
+  }
+  // Otherwise, initialize or queue onto the active initialization
+  if (!readyPromise || !insforge.realtime.isConnected) {
+    readyPromise = connectAndSubscribe().catch((err) => {
+      readyPromise = null; // reset on failure
+      throw err;
+    });
+  }
+  return readyPromise;
 }
 
 export async function broadcastEvent(event: CallEvent): Promise<void> {
