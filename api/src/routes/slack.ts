@@ -119,12 +119,12 @@ router.post("/command", async (req, res) => {
     const preview = String(result.diff).substring(0, 1800);
     await postSlackResponse(
       response_url,
-      `*@gojo done* ✅ \`${parsed.tool}\`\n\`\`\`\n${preview}\n\`\`\``
+      `*@gojo done* \`${parsed.tool}\`\n\`\`\`\n${preview}\n\`\`\``
     );
   } catch (err) {
     await postSlackResponse(
       response_url,
-      `*@gojo error* ❌ \`${parsed.tool}\`\n>${(err as Error).message}`
+      `*@gojo error* \`${parsed.tool}\`\n>${(err as Error).message}`
     );
   }
 });
