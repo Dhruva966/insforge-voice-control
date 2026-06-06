@@ -1489,9 +1489,9 @@
       item.innerHTML = `
         <div class="trace-icon" style="background:rgba(255,255,255,0.04)">${icon}</div>
         <div class="trace-body">
-          <div class="trace-action">${action}</div>
-          <div class="trace-sponsor">${sponsor}</div>
-          <div class="trace-time">${now}</div>
+          <div class="trace-action">${escapeHtml(action)}</div>
+          <div class="trace-sponsor">${escapeHtml(sponsor)}</div>
+          <div class="trace-time">${escapeHtml(now)}</div>
         </div>
         <div class="trace-badge ${status === 'ok' ? 'ok' : status === 'err' ? 'err' : 'run'}">${status === 'run' ? '…' : status === 'ok' ? 'OK' : 'ERR'}</div>
       `;
@@ -1535,8 +1535,8 @@
           <div class="action-card-icon" style="background:rgba(255,255,255,0.05)">
             ${toolEmoji(ev.action)}
           </div>
-          <div class="action-card-title">${ev.action ?? ''}</div>
-          ${badgeClass ? `<div class="action-card-badge ${badgeClass}">${ev.sponsor ?? ''}</div>` : ''}
+          <div class="action-card-title">${escapeHtml(ev.action ?? '')}</div>
+          ${badgeClass ? `<div class="action-card-badge ${badgeClass}">${escapeHtml(ev.sponsor ?? '')}</div>` : ''}
         </div>
         <div class="action-card-body">
           <pre class="language-${lang}"><code class="language-${lang}">${diffHtml}</code></pre>

@@ -80,6 +80,8 @@ export function getSponsor(tool: string): string {
   return TOOL_SPONSORS[tool] ?? "Unknown";
 }
 
+const SQL_WRITE_KEYWORDS = /\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE|REPLACE|GRANT|REVOKE|MERGE|COPY|EXEC|EXECUTE|CALL)\b/i;
+
 async function runSqlQuery(sql: string): Promise<ActionResult> {
   const trimmed = sql.trim();
   if (!trimmed.toLowerCase().startsWith("select")) {
@@ -87,6 +89,12 @@ async function runSqlQuery(sql: string): Promise<ActionResult> {
   }
   if (trimmed.includes(";")) {
     throw new Error("Security: multi-statement SQL is not allowed");
+  }
+  if (SQL_WRITE_KEYWORDS.test(trimmed)) {
+    throw new Error("Security: write operations (INSERT, UPDATE, DELETE, DROP, etc.) are not allowed inside SELECT queries");
+  }
+  if (/\binto\s+/i.test(trimmed) && /\bselect\b.*\binto\b/i.test(trimmed)) {
+    throw new Error("Security: SELECT INTO is not allowed");
   }
 
   const output = await cli("db", "query", trimmed, "--json");

@@ -12,12 +12,25 @@ import { handleMediaStream } from "./routes/mediaStream";
 import { slackRouter } from "./routes/slack";
 import { alertRouter } from "./routes/alert";
 import { eventsRouter } from "./routes/events";
+import { rateLimiter } from "./middleware/rateLimit";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WEB_DIR = path.resolve(__dirname, "../../web/public");
 
+const ALLOWED_ORIGINS = [
+  config.TWILIO_WEBHOOK_BASE,
+  /\.vercel\.app$/,
+  ...(config.NODE_ENV === "development" ? ["http://localhost:3000", "http://localhost:3001"] : []),
+];
+
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: ALLOWED_ORIGINS,
+  methods: ["GET", "POST"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Twilio-Signature", "X-Slack-Signature", "X-Slack-Request-Timestamp"],
+  credentials: false,
+}));
+app.use(rateLimiter);
 
 function captureRawBody(req: Request, _res: express.Response, buf: Buffer): void {
   (req as Request & { rawBody?: string }).rawBody = buf.toString("utf8");
