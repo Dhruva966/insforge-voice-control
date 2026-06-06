@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>InsForge Voice Control</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "SF Mono", "Fira Code", monospace;
+      background: #0d1117;
+      color: #e6edf3;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      padding: 12px 20px;
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header h1 { font-size: 16px; font-weight: 600; color: #58a6ff; }
+    .status-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #3fb950;
+      animation: pulse 2s infinite;
+    }
+    .status-dot.waiting { background: #6e7681; animation: none; }
+    .status-dot.active  { background: #3fb950; }
+    .status-dot.ended   { background: #f85149; animation: none; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; } 50% { opacity: 0.4; }
+    }
+    .layout {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+    .sidebar {
+      width: 300px;
+      min-width: 280px;
+      background: #161b22;
+      border-right: 1px solid #30363d;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .panel {
+      border-bottom: 1px solid #30363d;
+      padding: 12px;
+    }
+    .panel h2 {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #8b949e;
+      margin-bottom: 8px;
+    }
+    #call-status-panel {
+      font-size: 13px;
+    }
+    #call-status-text { color: #8b949e; }
+    #call-sid-text { color: #58a6ff; font-size: 11px; margin-top: 4px; }
+    #call-duration-text { color: #8b949e; font-size: 11px; }
+    #active-ops-panel {
+      flex: 0 0 auto;
+    }
+    #active-op {
+      font-size: 12px;
+      color: #f0883e;
+      padding: 6px 8px;
+      background: #1f1d0d;
+      border-radius: 4px;
+      border: 1px solid #3d3315;
+      min-height: 32px;
+    }
+    #exec-log-panel {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    #exec-log {
+      flex: 1;
+      overflow-y: auto;
+      font-size: 11px;
+      line-height: 1.6;
+    }
+    .log-entry {
+      padding: 3px 0;
+      border-bottom: 1px solid #21262d;
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+    }
+    .log-entry .icon { flex: 0 0 14px; }
+    .log-entry .log-action { color: #e6edf3; }
+    .log-entry .log-time { color: #6e7681; font-size: 10px; margin-left: auto; white-space: nowrap; }
+    .success { color: #3fb950; }
+    .failure { color: #f85149; }
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .main-header {
+      padding: 12px 16px;
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+      font-size: 12px;
+      color: #8b949e;
+    }
+    #diff-viewer {
+      flex: 1;
+      overflow: auto;
+      padding: 16px;
+      background: #0d1117;
+    }
+    #diff-viewer pre {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    #diff-placeholder {
+      color: #3d444d;
+      font-size: 14px;
+      text-align: center;
+      margin-top: 80px;
+    }
+    .transcript-panel {
+      height: 140px;
+      border-top: 1px solid #30363d;
+      background: #161b22;
+      overflow-y: auto;
+      padding: 8px 16px;
+    }
+    .transcript-line {
+      font-size: 12px;
+      padding: 3px 0;
+      color: #8b949e;
+    }
+    .transcript-line.agent { color: #58a6ff; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="status-dot waiting" id="status-dot"></div>
+    <h1>InsForge Voice Control</h1>
+    <span id="header-status" style="font-size:12px;color:#8b949e;">Waiting for call...</span>
+  </header>
+
+  <div class="layout">
+    <div class="sidebar">
+      <div class="panel" id="call-status-panel">
+        <h2>Call Status</h2>
+        <div id="call-status-text">No active call</div>
+        <div id="call-sid-text"></div>
+        <div id="call-duration-text"></div>
+      </div>
+
+      <div class="panel" id="active-ops-panel">
+        <h2>Active Operation</h2>
+        <div id="active-op">—</div>
+      </div>
+
+      <div class="panel" id="exec-log-panel">
+        <h2>Execution Log</h2>
+        <div id="exec-log"></div>
+      </div>
+    </div>
+
+    <div class="main">
+      <div class="main-header">
+        <span id="diff-label">Diff / Output Viewer</span>
+      </div>
+      <div id="diff-viewer">
+        <div id="diff-placeholder">
+          Call +19255155725 to begin.<br/>
+          SQL diffs, log output, and edge function code will appear here.
+        </div>
+      </div>
+      <div class="transcript-panel" id="transcript-panel"></div>
+    </div>
+  </div>
+
+  <script>
+    // ⚠️ In production (Vercel), this points to /api/events automatically.
+    // For local dev, change to: "http://localhost:3000/api/events"
+    const SSE_URL = "/api/events";
+
+    let callStartTime = null;
+
+    function escapeHtml(text) {
+      return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    function timestamp() {
+      return new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    }
+
+    function setStatus(state) {
+      const dot = document.getElementById("status-dot");
+      const hs = document.getElementById("header-status");
+      dot.className = `status-dot ${state}`;
+      if (state === "active") hs.textContent = "Call active";
+      else if (state === "ended") hs.textContent = "Call ended";
+      else hs.textContent = "Waiting for call...";
+    }
+
+    function showDiff(diffText, action) {
+      const viewer = document.getElementById("diff-viewer");
+      const lang = action === "run_sql" || action === "add_index" ? "sql" : "typescript";
+      const el = document.createElement("pre");
+      const code = document.createElement("code");
+      code.className = `language-${lang}`;
+      code.textContent = diffText;
+      el.appendChild(code);
+      viewer.innerHTML = "";
+      viewer.appendChild(el);
+      hljs.highlightElement(code);
+      document.getElementById("diff-label").textContent = `${action} — diff`;
+    }
+
+    function appendExecLog(action, success, durationMs) {
+      const log = document.getElementById("exec-log");
+      const entry = document.createElement("div");
+      entry.className = "log-entry";
+      entry.innerHTML = `
+        <span class="icon ${success ? "success" : "failure"}">${success ? "✓" : "✗"}</span>
+        <span class="log-action">${escapeHtml(action)}</span>
+        <span class="log-time">${timestamp()}${durationMs ? ` ${durationMs}ms` : ""}</span>
+      `;
+      log.appendChild(entry);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function appendTranscript(role, text) {
+      const panel = document.getElementById("transcript-panel");
+      const line = document.createElement("div");
+      line.className = `transcript-line ${role}`;
+      line.textContent = `[${role}] ${text}`;
+      panel.appendChild(line);
+      panel.scrollTop = panel.scrollHeight;
+    }
+
+    function handleEvent(event) {
+      switch (event.type) {
+        case "call_started":
+          callStartTime = Date.now();
+          setStatus("active");
+          document.getElementById("call-status-text").textContent = "Active";
+          document.getElementById("call-sid-text").textContent = event.callSid ?? "";
+          document.getElementById("diff-placeholder") && (document.getElementById("diff-viewer").innerHTML = '<div style="color:#3d444d;font-size:14px;text-align:center;margin-top:80px;">Agent connected. Listening...</div>');
+          break;
+
+        case "transcript":
+          appendTranscript(event.role, event.text);
+          break;
+
+        case "action_proposed":
+          document.getElementById("active-op").textContent = `⟳ ${event.action}: ${JSON.stringify(event.params)}`;
+          showDiff(event.diff, event.action);
+          break;
+
+        case "action_executing":
+          document.getElementById("active-op").textContent = `▶ ${event.action} executing...`;
+          break;
+
+        case "action_done":
+          document.getElementById("active-op").textContent = event.success ? `✓ ${event.action}` : `✗ ${event.action}`;
+          appendExecLog(event.action, event.success, event.durationMs);
+          if (event.result && event.success) {
+            try {
+              const parsed = JSON.parse(event.result);
+              showDiff(JSON.stringify(parsed, null, 2), event.action);
+            } catch { /* keep current diff */ }
+          }
+          break;
+
+        case "call_ended":
+          setStatus("ended");
+          document.getElementById("call-status-text").textContent = `Ended — ${event.actionCount} action(s)`;
+          document.getElementById("call-duration-text").textContent = callStartTime
+            ? `Duration: ${Math.round((Date.now() - callStartTime) / 1000)}s` : "";
+          document.getElementById("active-op").textContent = "—";
+          break;
+      }
+    }
+
+    function connect() {
+      const evtSource = new EventSource(SSE_URL);
+      evtSource.onmessage = (e) => {
+        try { handleEvent(JSON.parse(e.data)); } catch { /* ignore malformed */ }
+      };
+      evtSource.onerror = () => {
+        console.warn("[SSE] connection lost, reconnecting in 3s...");
+        evtSource.close();
+        setTimeout(connect, 3000);
+      };
+    }
+
+    connect();
+  </script>
+</body>
+</html>

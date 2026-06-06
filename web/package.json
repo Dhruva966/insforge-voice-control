@@ -1,0 +1,7 @@
+{
+  "name": "insforge-voice-control-web",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "vercel dev"
+  }
+}

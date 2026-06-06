@@ -1,0 +1,10 @@
+{
+  "buildCommand": "echo static",
+  "outputDirectory": "public",
+  "functions": {
+    "api/events.ts": {
+      "runtime": "nodejs22.x",
+      "maxDuration": 300
+    }
+  }
+}
