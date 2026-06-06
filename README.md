@@ -1,14 +1,15 @@
 <div align="center">
 
-# InsForge Voice Control
+# Gojo — InsForge Voice Control
 
 **Control your cloud infrastructure with your voice.**
 
 [![Node.js](https://img.shields.io/badge/Node.js-22.x-339933?logo=node.js&logoColor=white)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Gemini](https://img.shields.io/badge/Gemini-3.1_Flash_Live-4285F4?logo=google&logoColor=white)](https://deepmind.google/technologies/gemini/)
-[![Twilio](https://img.shields.io/badge/Twilio-Voice-F22F46?logo=twilio&logoColor=white)](https://www.twilio.com)
-[![InsForge](https://img.shields.io/badge/InsForge-Postgres_+_Realtime-6366F1)](https://insforge.com)
+[![Twilio](https://img.shields.io/badge/Twilio-Voice+SMS-F22F46?logo=twilio&logoColor=white)](https://www.twilio.com)
+[![InsForge](https://img.shields.io/badge/InsForge-Postgres+Realtime+Edge-6366F1)](https://insforge.com)
+[![Replicas](https://img.shields.io/badge/Replicas-Coding_Agent-16a34a)](https://tryreplicas.com)
 [![Vercel](https://img.shields.io/badge/Vercel-Dashboard-000000?logo=vercel&logoColor=white)](https://vercel.com)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue)](LICENSE)
 
@@ -17,6 +18,8 @@
 ---
 
 **Call `+1 (925) 515-5725`**  →  speak a command  →  watch your infrastructure change live.
+
+> **On load:** Gojo splash screen — cartoon Gojo mascot (white hair, blindfold) surrounded by 5 orbiting sponsor logos. Dismisses when SSE connects.
 
 </div>
 
