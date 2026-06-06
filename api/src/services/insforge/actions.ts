@@ -184,9 +184,9 @@ async function spawnCodingAgent(task: string): Promise<ActionResult> {
 
   const { id: agentId } = (await spawnRes.json()) as { id: string };
 
-  // Poll up to 60s for completion
+  // Poll up to 20s (10 × 2s) — cap to avoid blocking the voice call
   let agentResult: { diff?: string; filesChanged?: string[]; status?: string } = {};
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 10; i++) {
     await new Promise((r) => setTimeout(r, 2000));
     const pollRes = await fetch(`https://api.tryreplicas.com/v1/replicas/${agentId}`, {
       headers: { Authorization: `Bearer ${apiKey}` },
