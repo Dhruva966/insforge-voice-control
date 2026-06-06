@@ -6,13 +6,21 @@ import twilio from "twilio";
 import { GoogleGenAI } from "@google/genai";
 import { promisify } from "util";
 import { config } from "../../config.js";
-import { createDevinSession, pollDevinSession, sendDevinMessage } from "../devin/client.js";
+import { createDevinSession, listDevinSessionMessages, pollDevinSession, sendDevinMessage } from "../devin/client.js";
 import { broadcastEvent } from "./realtime.js";
 
 export type ActionResult = { result: unknown; diff: string; action: string; sponsor?: string; narration?: string; sessionId?: string; prUrl?: string };
 const execFileAsync = promisify(execFile);
 
-export async function executeTool(name: string, params: Record<string, string>): Promise<ActionResult> {
+type ToolExecutionContext = {
+  callSid?: string;
+};
+
+export async function executeTool(
+  name: string,
+  params: Record<string, string>,
+  context: ToolExecutionContext = {}
+): Promise<ActionResult> {
   switch (name) {
     case "run_sql":            return runSqlQuery(params.sql ?? "");
     case "add_index":          return addIndex(params.table ?? "", params.column ?? "");
@@ -23,7 +31,7 @@ export async function executeTool(name: string, params: Record<string, string>):
     case "spawn_coding_agent": return spawnCodingAgent(params.task ?? "");
     case "analyze_with_ai":    return analyzeWithAI(params.question ?? "", params.data ?? "");
     case "send_slack":          return sendSlack(params.message ?? "");
-    case "spawn_devin_agent":   return spawnDevinAgent(params.task ?? "", params.title, params.callSid);
+    case "spawn_devin_agent":   return spawnDevinAgent(params.task ?? "", params.title, context.callSid ?? params.callSid);
     case "send_agent_message":  return sendAgentMessage(params.sessionId ?? "", params.message ?? "");
     default: throw new Error(`Unknown tool: ${name}`);
   }
@@ -58,8 +66,15 @@ async function cli(...args: string[]): Promise<string> {
   return stdout;
 }
 
+type ActiveDevinSession = {
+  callSid: string;
+  task: string;
+  num: number;
+  lastMessageEventId: string | null;
+};
+
 // Active Devin sessions for routing (sessionId → callSid)
-export const activeDevinSessions = new Map<string, { callSid: string; task: string; num: number }>();
+export const activeDevinSessions = new Map<string, ActiveDevinSession>();
 let devinSessionSeq = 0;
 
 const TOOL_SPONSORS: Record<string, string> = {
@@ -325,6 +340,31 @@ async function sendSlack(message: string): Promise<ActionResult> {
   };
 }
 
+function normalizeDevinSummary(message: string | undefined, fallback: string): string {
+  if (!message) return fallback;
+  const compact = message.replace(/\s+/g, " ").trim();
+  if (!compact) return fallback;
+  return compact.length > 280 ? `${compact.slice(0, 277)}...` : compact;
+}
+
+async function fetchPullRequestDiff(prUrl: string | undefined): Promise<string | undefined> {
+  if (!prUrl) return undefined;
+
+  try {
+    const response = await fetch(`${prUrl}.diff`, {
+      headers: { Accept: "text/plain" },
+    });
+    if (!response.ok) return undefined;
+
+    const diff = (await response.text()).trim();
+    if (!diff) return undefined;
+    return diff.length > 120_000 ? `${diff.slice(0, 120_000)}\n\n...diff truncated...` : diff;
+  } catch (err) {
+    console.error("[devin] fetchPullRequestDiff error:", err);
+    return undefined;
+  }
+}
+
 async function spawnDevinAgent(task: string, title?: string, callSid?: string): Promise<ActionResult> {
   const session = await createDevinSession(task, { title });
 
@@ -332,7 +372,12 @@ async function spawnDevinAgent(task: string, title?: string, callSid?: string): 
   const num = devinSessionSeq;
   const sid = callSid ?? "unknown";
 
-  activeDevinSessions.set(session.session_id, { callSid: sid, task, num });
+  activeDevinSessions.set(session.session_id, {
+    callSid: sid,
+    task,
+    num,
+    lastMessageEventId: null,
+  });
 
   // Broadcast start event (non-blocking — we don't await the full poll)
   void broadcastEvent({
@@ -347,24 +392,66 @@ async function spawnDevinAgent(task: string, title?: string, callSid?: string): 
   void pollDevinSession(
     session.session_id,
     async (s) => {
-      const narration = s.status_detail ?? `Agent ${num} status: ${s.status}`;
+      const entry = activeDevinSessions.get(session.session_id);
+      const messages = await listDevinSessionMessages(session.session_id).catch((err) => {
+        console.error(`[devin] list messages error for ${session.session_id}:`, err);
+        return [];
+      });
+      const latestDevinMessage = [...messages].reverse().find((message) => message.source === "devin");
+      const latestEventId = latestDevinMessage?.event_id ?? null;
+
+      if (entry && latestEventId && latestEventId === entry.lastMessageEventId) {
+        await broadcastEvent({
+          type: "devin_agent_update",
+          callSid: sid,
+          sessionId: session.session_id,
+          narration: normalizeDevinSummary(undefined, s.status_detail ?? `Agent ${num} status: ${s.status}`),
+          prUrl: s.pull_requests?.[0]?.pr_url,
+          status: s.status,
+        }).catch(() => { /* ignore */ });
+        return;
+      }
+
+      if (entry) {
+        entry.lastMessageEventId = latestEventId;
+      }
+
+      const narration = normalizeDevinSummary(
+        latestDevinMessage?.message,
+        s.status_detail ?? `Agent ${num} status: ${s.status}`
+      );
+      const prUrl = s.pull_requests?.[0]?.pr_url;
+      const diff = prUrl ? await fetchPullRequestDiff(prUrl) : undefined;
       await broadcastEvent({
         type: "devin_agent_update",
         callSid: sid,
         sessionId: session.session_id,
         narration,
+        prUrl,
+        status: s.status,
+        diff,
       }).catch(() => { /* ignore */ });
     },
     120_000
   ).then(async (final) => {
-    const prUrl = final.pull_requests?.[0]?.url;
-    const narration = await generateNarration(task, "", []);
+    const prUrl = final.pull_requests?.[0]?.pr_url;
+    const messages = await listDevinSessionMessages(session.session_id).catch((err) => {
+      console.error(`[devin] final list messages error for ${session.session_id}:`, err);
+      return [];
+    });
+    const latestDevinMessage = [...messages].reverse().find((message) => message.source === "devin");
+    const diff = await fetchPullRequestDiff(prUrl);
+    const narration = normalizeDevinSummary(
+      latestDevinMessage?.message,
+      await generateNarration(task, diff ?? "", [])
+    );
     await broadcastEvent({
       type: "devin_agent_done",
       callSid: sid,
       sessionId: session.session_id,
       sessionUrl: final.url,
       narration: narration || `Agent ${num} completed: ${task}`,
+      diff,
       prUrl,
     }).catch(() => { /* ignore */ });
 

@@ -1578,6 +1578,7 @@
       events: [],
       actionHistory: [],   // { action, sponsor, success, durationMs }
       endedDuration: 0,
+      transcriptDraft: null,
     };
 
     // ── SPLASH ───────────────────────────────────────────────────────────────
@@ -1683,6 +1684,8 @@
           updateAgentCard(ev.sessionId, {
             narration: ev.narration ?? null,
             status: 'running',
+            prUrl: ev.prUrl ?? null,
+            diff: ev.diff ?? null,
           });
           if (ev.routedFrom) showRoutingIndicator(`Sonnet routed: "${ev.routedFrom}" → Agent ${agents.get(ev.sessionId)?.num ?? '?'}`);
           break;
@@ -1710,6 +1713,7 @@
       state.callSid = ev.callSid;
       state.startTime = Date.now();
       state.actionCount = 0;
+      state.transcriptDraft = null;
 
       setPill('active', 'Call Active');
       document.getElementById('val-sid').textContent    = ev.callSid?.slice(-8) ?? '—';
@@ -1729,7 +1733,7 @@
     }
 
     function onTranscript(ev) {
-      addTranscriptMsg(ev.role, ev.text);
+      upsertTranscriptMsg(ev.role, ev.text);
     }
 
     function onActionDone(ev) {
@@ -1927,6 +1931,45 @@
       scroll.scrollTop = scroll.scrollHeight;
     }
 
+    function upsertTranscriptMsg(role, text) {
+      const nextText = String(text ?? '').trim();
+      if (!nextText) return;
+
+      const draft = state.transcriptDraft;
+      const shouldUpdateExisting = draft
+        && draft.role === role
+        && typeof draft.text === 'string'
+        && (
+          nextText.startsWith(draft.text)
+          || draft.text.startsWith(nextText)
+          || nextText.length >= draft.text.length
+        );
+
+      if (shouldUpdateExisting && draft.bubbleEl) {
+        draft.text = nextText;
+        draft.bubbleEl.textContent = nextText;
+        const scroll = document.getElementById('transcript-scroll');
+        scroll.scrollTop = scroll.scrollHeight;
+        return;
+      }
+
+      if (draft?.rootEl) {
+        draft.rootEl.dataset.live = 'false';
+      }
+
+      addTranscriptMsg(role, nextText);
+      const scroll = document.getElementById('transcript-scroll');
+      const rootEl = scroll.lastElementChild;
+      const bubbleEl = rootEl?.querySelector('.tx-bubble');
+
+      if (rootEl) {
+        rootEl.dataset.live = 'true';
+        rootEl.dataset.role = role;
+      }
+
+      state.transcriptDraft = { role, text: nextText, rootEl, bubbleEl };
+    }
+
     // ── SPONSOR FILTER ────────────────────────────────────────────────────────
     function toggleSponsor(name, btn) {
       if (state.activeFilters.has(name)) {
@@ -1977,6 +2020,7 @@
       state.events = [];
       state.actionHistory = [];
       state.endedDuration = 0;
+      state.transcriptDraft = null;
 
       // Reset status panel
       setPill('waiting', 'Awaiting Call');

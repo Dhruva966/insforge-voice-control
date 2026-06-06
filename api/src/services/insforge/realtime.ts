@@ -14,7 +14,7 @@ export type CallEvent =
   | { type: "ai_analysis_done";      callSid: string; question: string; analysis: string }
   | { type: "slack_sent";            callSid: string; message: string }
   | { type: "devin_agent_started";   callSid: string; sessionId: string; sessionUrl: string; task: string }
-  | { type: "devin_agent_update";    callSid: string; sessionId: string; narration: string; routedFrom?: string }
+  | { type: "devin_agent_update";    callSid: string; sessionId: string; narration: string; routedFrom?: string; prUrl?: string; status?: string; diff?: string }
   | { type: "devin_agent_done";      callSid: string; sessionId: string; sessionUrl: string; narration: string; diff?: string; prUrl?: string }
   | { type: "agent_routed";          callSid: string; sessionId: string; agentNum: number; instruction: string };
 

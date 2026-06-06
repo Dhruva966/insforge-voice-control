@@ -12,7 +12,14 @@ export interface DevinSession {
   status: string;
   status_detail?: string;
   acus_consumed?: number;
-  pull_requests?: { url: string; state: string }[];
+  pull_requests?: { pr_url: string; pr_state: string }[];
+}
+
+export interface DevinSessionMessage {
+  event_id: string;
+  source: "user" | "devin";
+  message: string;
+  created_at: number;
 }
 
 function assertConfigured(): void {
@@ -47,6 +54,18 @@ export async function getDevinSession(sessionId: string): Promise<DevinSession> 
   const res = await fetch(`${BASE_V3}/sessions/${sessionId}`, { headers: AUTH });
   if (!res.ok) throw new Error(`Devin getSession HTTP ${res.status}`);
   return res.json() as Promise<DevinSession>;
+}
+
+export async function listDevinSessionMessages(sessionId: string): Promise<DevinSessionMessage[]> {
+  assertConfigured();
+  const res = await fetch(`${BASE_V3}/sessions/${sessionId}/messages`, { headers: AUTH });
+  if (!res.ok) throw new Error(`Devin listSessionMessages HTTP ${res.status}`);
+
+  const data = await res.json() as {
+    items?: DevinSessionMessage[];
+  };
+
+  return Array.isArray(data.items) ? data.items : [];
 }
 
 export async function sendDevinMessage(sessionId: string, message: string): Promise<void> {

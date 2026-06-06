@@ -24,6 +24,8 @@ export async function openGeminiSession(
   alertCtx?: AlertContext
 ): Promise<GeminiHandle> {
   let actionCount = 0;
+  let lastUserTranscript = "";
+  let lastAgentTranscript = "";
 
   const liveSession = await ai.live.connect({
     model: config.GEMINI_MODEL,
@@ -54,9 +56,10 @@ export async function openGeminiSession(
           onAudio(geminiToTwilio(msg.data));
         }
 
-        const userTranscript = msg.serverContent?.inputTranscription;
-        if (userTranscript?.finished && userTranscript.text?.trim()) {
-          const text = userTranscript.text.trim();
+        const userTranscript = msg.serverContent?.inputTranscription?.text?.trim();
+        if (userTranscript && userTranscript !== lastUserTranscript) {
+          lastUserTranscript = userTranscript;
+          const text = userTranscript;
           void broadcastEvent({
             type: "transcript",
             callSid,
@@ -86,13 +89,14 @@ export async function openGeminiSession(
           }
         }
 
-        const agentTranscript = msg.serverContent?.outputTranscription;
-        if (agentTranscript?.finished && agentTranscript.text?.trim()) {
+        const agentTranscript = msg.serverContent?.outputTranscription?.text?.trim();
+        if (agentTranscript && agentTranscript !== lastAgentTranscript) {
+          lastAgentTranscript = agentTranscript;
           void broadcastEvent({
             type: "transcript",
             callSid,
             role: "agent",
-            text: agentTranscript.text.trim(),
+            text: agentTranscript,
             timestamp: new Date().toISOString(),
           }).catch((err) => console.error(`[${callSid}] agent transcript broadcast error:`, err));
         }
@@ -123,7 +127,7 @@ export async function openGeminiSession(
             let actionResult: Awaited<ReturnType<typeof executeTool>> | null = null;
             let success = true;
             try {
-              actionResult = await executeTool(name ?? "", params);
+              actionResult = await executeTool(name ?? "", params, { callSid });
               actionCount++;
             } catch (err) {
               actionResult = { action: name ?? "", result: { error: String(err) }, diff: String(err), sponsor };
