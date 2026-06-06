@@ -18,6 +18,7 @@ export async function executeTool(name: string, params: Record<string, string>):
     case "send_sms":           return sendSms(params.to ?? "", params.message ?? "");
     case "spawn_coding_agent": return spawnCodingAgent(params.task ?? "");
     case "analyze_with_ai":    return analyzeWithAI(params.question ?? "", params.data ?? "");
+    case "send_slack":         return sendSlack(params.message ?? "");
     default: throw new Error(`Unknown tool: ${name}`);
   }
 }
@@ -55,6 +56,7 @@ const TOOL_SPONSORS: Record<string, string> = {
   send_sms:           "Twilio · SMS",
   spawn_coding_agent: "Replicas · Coding Agent",
   analyze_with_ai:    "Gemini · AI Gateway",
+  send_slack:         "Slack · Webhooks",
 };
 
 export function getSponsor(tool: string): string {
@@ -206,12 +208,62 @@ async function spawnCodingAgent(task: string): Promise<ActionResult> {
   const diff = agentResult.diff ?? `// Replicas agent ${agentId} — task queued\n// Task: ${task}`;
   const files = agentResult.filesChanged ?? [];
 
+  // Auto-notify Slack when coding agent completes
+  if (agentResult.status === "completed" || agentResult.diff) {
+    const preview = diff.substring(0, 500);
+    await notifySlackInternal(
+      `*@gojo coding agent done* (${agentId})\nTask: ${task}\nFiles: ${files.join(", ") || "pending"}\n\`\`\`\n${preview}\n\`\`\``
+    );
+  }
+
   return {
     action: "spawn_coding_agent",
     result: { agentId, filesChanged: files, status: agentResult.status ?? "queued" },
     diff: `// Replicas Coding Agent — ${agentId}\n// Task: ${task}\n// Files: ${files.join(", ") || "pending"}\n\n${diff}`,
     sponsor: "Replicas · Coding Agent",
   };
+}
+
+async function sendSlack(message: string): Promise<ActionResult> {
+  const webhookUrl = config.SLACK_WEBHOOK_URL;
+  if (!webhookUrl) throw new Error("SLACK_WEBHOOK_URL not configured");
+
+  const payload = {
+    text: `*Gojo Alert*\n${message}`,
+    blocks: [
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `*:robot_face: Gojo Alert*\n${message}`,
+        },
+      },
+    ],
+  };
+
+  const res = await fetch(webhookUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`Slack webhook HTTP ${res.status}`);
+
+  return {
+    action: "send_slack",
+    result: { status: "delivered" },
+    diff: `-- Slack Notification\n${message}`,
+    sponsor: "Slack · Webhooks",
+  };
+}
+
+async function notifySlackInternal(message: string): Promise<void> {
+  const webhookUrl = config.SLACK_WEBHOOK_URL;
+  if (!webhookUrl) return;
+  await fetch(webhookUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: message }),
+  }).catch((err) => console.error("[slack] notify error:", err));
 }
 
 async function analyzeWithAI(question: string, data: string): Promise<ActionResult> {

@@ -98,4 +98,18 @@ export const INSFORGE_TOOLS: FunctionDeclaration[] = [
       required: ["question", "data"],
     },
   },
+  {
+    name: "send_slack",
+    description: "Send a Slack notification to the team channel via webhook — use to share diffs, summaries, alerts, or coding agent results. Also auto-triggered after spawn_coding_agent completes.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        message: {
+          type: Type.STRING,
+          description: "Notification message. Supports Slack mrkdwn formatting (*bold*, `code`, ```blocks```).",
+        },
+      },
+      required: ["message"],
+    },
+  },
 ];

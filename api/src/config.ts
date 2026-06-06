@@ -18,6 +18,9 @@ const schema = z.object({
 
   REPLICAS_API_KEY: z.string().optional(),
 
+  SLACK_WEBHOOK_URL: z.string().url().optional(),
+  SLACK_SIGNING_SECRET: z.string().optional(),
+
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   PORT: z.coerce.number().default(3000),
 });

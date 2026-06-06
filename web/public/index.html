@@ -2,499 +2,600 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Gojo — InsForge Voice Control</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <!-- Prism.js (CSP-safe, no eval) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-diff.min.js" defer></script>
 
   <style>
     :root {
-      --paper: #faf8f3;
-      --surface: #ffffff;
-      --surface-2: #f4efe5;
-      --border: #e6dfd0;
-      --border-soft: #efe9dc;
-      --ink: #1b1a17;
-      --ink-2: #6b6557;
-      --ink-3: #9c9485;
-      --clay: #b45a35;
-      --clay-deep: #9c4825;
-      --clay-tint: #f1e5da;
-      --status-green: #3e7a45;
-      --status-amber: #b58419;
-      --status-red: #b5432b;
-      --radius-sm: 6px;
-      --radius-md: 10px;
-      --radius-lg: 14px;
-      --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      --bg:          #060612;
+      --surface:     #0d0d28;
+      --surface-2:   #111135;
+      --surface-3:   #181848;
+      --border:      rgba(99,102,241,0.18);
+      --border-soft: rgba(255,255,255,0.06);
+      --accent:      #6366f1;
+      --accent-2:    #818cf8;
+      --accent-glow: rgba(99,102,241,0.25);
+      --text:        rgba(255,255,255,0.92);
+      --text-2:      rgba(255,255,255,0.50);
+      --text-3:      rgba(255,255,255,0.28);
+      --green:       #22c55e;
+      --amber:       #f59e0b;
+      --red:         #ef4444;
+      --radius-sm:   8px;
+      --radius-md:   14px;
+      --radius-lg:   20px;
+      --sidebar-w:   280px;
+      --right-w:     300px;
+      --nav-h:       60px;
 
-      /* Sponsor brand colors */
-      --insforge: #6366F1;
-      --insforge-bg: rgba(99,102,241,0.08);
-      --twilio: #F22F46;
-      --twilio-bg: rgba(242,47,70,0.08);
-      --gemini: #4285F4;
-      --gemini-bg: rgba(66,133,244,0.08);
-      --replicas: #16a34a;
-      --replicas-bg: rgba(22,163,74,0.08);
-      --vercel: #000000;
-      --vercel-bg: rgba(0,0,0,0.06);
+      /* Sponsor colours */
+      --insforge:      #6366f1;
+      --insforge-bg:   rgba(99,102,241,0.10);
+      --twilio:        #f22f46;
+      --twilio-bg:     rgba(242,47,70,0.10);
+      --gemini:        #4285f4;
+      --gemini-bg:     rgba(66,133,244,0.10);
+      --replicas:      #22c55e;
+      --replicas-bg:   rgba(34,197,94,0.10);
+      --slack:         #e01e5a;
+      --slack-bg:      rgba(224,30,90,0.10);
+      --vercel:        #ffffff;
+      --vercel-bg:     rgba(255,255,255,0.06);
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body {
-      background-color: var(--paper);
-      color: var(--ink);
-      font-family: var(--font-body, 'Inter', system-ui, sans-serif);
+    html, body {
+      height: 100%; overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, sans-serif;
       -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────────────────────────── */
+    .app {
       display: flex;
       height: 100vh;
+      height: 100dvh;
       overflow: hidden;
-    }
-
-    @keyframes vg-pop-in {
-      0% { opacity: 0; transform: scale(0.95) translateY(8px); }
-      100% { opacity: 1; transform: scale(1) translateY(0); }
-    }
-    @keyframes pulse-dot {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.5; transform: scale(1.3); }
-    }
-    @keyframes slide-up {
-      0% { opacity: 0; transform: translateY(12px); }
-      100% { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes pulse-ring {
-      0% { box-shadow: 0 0 0 0 rgba(62,122,69,0.4); }
-      70% { box-shadow: 0 0 0 8px rgba(62,122,69,0); }
-      100% { box-shadow: 0 0 0 0 rgba(62,122,69,0); }
-    }
-    @keyframes agent-thinking {
-      0%, 100% { opacity: 0.3; }
-      50% { opacity: 1; }
     }
 
     /* ── SIDEBAR ─────────────────────────────────────────────────────────── */
     .sidebar {
-      width: 300px;
-      background-color: var(--surface-2);
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      background: var(--surface);
       border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
-      flex-shrink: 0;
-      z-index: 20;
       overflow: hidden;
+      z-index: 10;
     }
 
     .brand-header {
-      padding: 20px 24px;
+      padding: 18px 20px 14px;
       border-bottom: 1px solid var(--border-soft);
       display: flex;
       align-items: center;
       gap: 10px;
+      flex-shrink: 0;
     }
     .brand-icon {
-      width: 30px; height: 30px;
-      background: var(--clay);
-      border-radius: var(--radius-sm);
-      color: white;
+      width: 32px; height: 32px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent), #4f46e5);
       display: flex; align-items: center; justify-content: center;
-      font-weight: 700;
-      font-size: 16px;
+      font-size: 14px; font-weight: 700; color: white;
+      box-shadow: 0 2px 12px var(--accent-glow);
+      flex-shrink: 0;
     }
     .brand-title {
       font-family: 'Fraunces', Georgia, serif;
-      font-size: 16px;
-      font-weight: 600;
-      color: var(--ink);
-      letter-spacing: -0.01em;
+      font-size: 17px; font-weight: 700; letter-spacing: -0.01em;
+      color: var(--text);
       flex: 1;
     }
-    .brand-badge {
-      font-size: 10px;
-      padding: 2px 7px;
-      background: var(--clay-tint);
-      color: var(--clay-deep);
-      border-radius: 100px;
-      font-weight: 600;
-      letter-spacing: 0.05em;
+    .live-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px; font-weight: 500; letter-spacing: 0.12em;
+      padding: 3px 7px;
+      border-radius: 20px;
+      background: var(--green);
+      color: white;
+      animation: live-pulse 2.5s ease-in-out infinite;
+    }
+    @keyframes live-pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.65; }
     }
 
-    /* Sponsor pills */
+    /* Sponsor filter pills */
     .sponsors-bar {
-      padding: 12px 24px;
-      border-bottom: 1px solid var(--border-soft);
+      padding: 12px 16px;
       display: flex;
-      gap: 6px;
       flex-wrap: wrap;
-    }
-    .sp {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 3px 8px;
-      border-radius: 100px;
-      font-size: 10px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: var(--transition);
-      border: 1.5px solid transparent;
-      user-select: none;
-    }
-    .sp[data-active="false"] { opacity: 0.35; }
-    .sp-insforge { background: var(--insforge-bg); color: var(--insforge); border-color: rgba(99,102,241,0.2); }
-    .sp-twilio   { background: var(--twilio-bg);   color: var(--twilio);   border-color: rgba(242,47,70,0.2); }
-    .sp-gemini   { background: var(--gemini-bg);   color: var(--gemini);   border-color: rgba(66,133,244,0.2); }
-    .sp-replicas { background: var(--replicas-bg); color: var(--replicas); border-color: rgba(22,163,74,0.2); }
-    .sp-vercel   { background: var(--vercel-bg);   color: var(--vercel);   border-color: rgba(0,0,0,0.15); }
-    .sp-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
-
-    .nav-section { padding: 16px 24px; border-bottom: 1px solid var(--border-soft); }
-    .nav-label {
-      font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
-      color: var(--ink-3); font-weight: 600; margin-bottom: 10px;
-    }
-
-    .status-pill {
-      display: flex; align-items: center; gap: 8px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      padding: 8px 12px;
-      border-radius: var(--radius-sm);
-      font-size: 13px; font-weight: 500;
-      transition: var(--transition);
-    }
-    .status-pill.active { border-color: var(--status-green); background: rgba(62,122,69,0.05); animation: pulse-ring 2s infinite; }
-    .status-pill.ended  { border-color: var(--status-red);   background: rgba(181,67,43,0.05); }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); flex-shrink: 0; }
-    .status-pill.active .dot { background: var(--status-green); animation: pulse-dot 1.5s infinite; }
-    .status-pill.ended .dot  { background: var(--status-red); }
-
-    .telemetry { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
-    .t-row { display: flex; justify-content: space-between; font-size: 12px; }
-    .t-lbl { color: var(--ink-2); }
-    .t-val { font-family: 'JetBrains Mono', monospace; color: var(--ink); font-weight: 500; }
-
-    .stream-container {
-      flex: 1; overflow-y: auto; padding: 12px 16px;
-    }
-    .stream-container::-webkit-scrollbar { width: 4px; }
-    .stream-container::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-
-    /* Op cards */
-    .op-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-md);
-      padding: 10px 12px;
-      margin-bottom: 8px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
-      animation: vg-pop-in 0.3s ease-out forwards;
-      cursor: pointer;
-      transition: border-color 0.2s;
-    }
-    .op-card:hover { border-color: var(--clay); }
-    .op-card.exec { border-left: 3px solid var(--status-amber); }
-    .op-card.done { border-left: 3px solid var(--status-green); }
-    .op-card.fail { border-left: 3px solid var(--status-red); }
-
-    .op-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-    .op-name { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: var(--ink); }
-    .op-time { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-3); }
-
-    .op-sponsor {
-      display: inline-flex; align-items: center; gap: 4px;
-      font-size: 9px; font-weight: 700; letter-spacing: 0.05em;
-      padding: 2px 6px; border-radius: 100px; margin-bottom: 4px;
-      text-transform: uppercase;
-    }
-    .op-body { font-size: 11px; color: var(--ink-2); line-height: 1.4; word-break: break-all; margin-top: 4px; }
-
-    /* ── MAIN AREA ─────────────────────────────────────────────────────────── */
-    .main-area {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      position: relative;
-      min-width: 0;
-    }
-
-    .top-bar {
-      height: 57px;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      padding: 0 24px;
-      gap: 12px;
+      gap: 6px;
+      border-bottom: 1px solid var(--border-soft);
       flex-shrink: 0;
     }
-    .top-bar-title {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 12px; color: var(--ink-2);
-      flex: 1;
-    }
-    .tab {
-      padding: 5px 10px; background: var(--clay-tint); color: var(--clay-deep);
-      border-radius: var(--radius-sm); font-weight: 600; font-size: 12px;
-      font-family: 'JetBrains Mono', monospace;
-    }
-    .top-bar-actions { display: flex; gap: 8px; align-items: center; }
-    .btn-sm {
-      padding: 5px 12px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      background: var(--surface);
-      font-size: 11px; font-weight: 600;
-      color: var(--ink-2);
+    .sp {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 9px;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.04);
+      color: var(--text-2);
+      font-size: 11px; font-weight: 500;
       cursor: pointer;
-      transition: var(--transition);
-      font-family: 'Inter', system-ui, sans-serif;
+      transition: all 0.18s ease;
     }
-    .btn-sm:hover { border-color: var(--clay); color: var(--clay-deep); background: var(--clay-tint); }
-    .btn-sm.primary { background: var(--clay); color: white; border-color: var(--clay); }
-    .btn-sm.primary:hover { background: var(--clay-deep); }
+    .sp:hover { border-color: rgba(255,255,255,0.2); color: var(--text); }
+    .sp.active { background: var(--color-bg, var(--insforge-bg)); border-color: var(--color, var(--accent)); color: var(--color, var(--text)); }
+    .sp-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: currentColor;
+      opacity: 0.7;
+    }
+    .sp-insforge  { --color: var(--insforge);  --color-bg: var(--insforge-bg); }
+    .sp-twilio    { --color: var(--twilio);    --color-bg: var(--twilio-bg); }
+    .sp-gemini    { --color: var(--gemini);    --color-bg: var(--gemini-bg); }
+    .sp-replicas  { --color: var(--replicas);  --color-bg: var(--replicas-bg); }
+    .sp-slack     { --color: var(--slack);     --color-bg: var(--slack-bg); }
 
-    /* Content split */
-    .content-area {
+    /* Status section */
+    .sidebar-section {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border-soft);
+      flex-shrink: 0;
+    }
+    .section-label {
+      font-size: 10px; font-weight: 600; letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      margin-bottom: 10px;
+    }
+    .status-pill {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px; font-weight: 500;
+      border: 1px solid;
+      margin-bottom: 10px;
+      width: 100%;
+    }
+    .status-pill.waiting  { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.1); color: var(--text-2); }
+    .status-pill.active   { background: rgba(34,197,94,0.1);    border-color: rgba(34,197,94,0.3);   color: var(--green); }
+    .status-pill.ended    { background: rgba(239,68,68,0.08);   border-color: rgba(239,68,68,0.2);   color: var(--red); }
+    .status-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+    }
+    .status-pill.active .status-dot {
+      animation: dot-pulse 1.4s ease-in-out infinite;
+    }
+    @keyframes dot-pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.4; transform: scale(1.4); }
+    }
+
+    .telemetry { display: flex; flex-direction: column; gap: 4px; }
+    .t-row { display: flex; justify-content: space-between; align-items: center; }
+    .t-lbl { font-size: 11px; color: var(--text-3); }
+    .t-val { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-2); max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* Waveform */
+    .waveform {
+      display: flex; align-items: center; gap: 3px;
+      height: 24px;
+      margin-top: 10px;
+    }
+    .waveform-bar {
+      flex: 1; border-radius: 2px;
+      background: var(--accent);
+      opacity: 0.6;
+      animation: wave-anim var(--d, 0.7s) ease-in-out infinite alternate;
+      height: var(--h, 10px);
+    }
+    @keyframes wave-anim {
+      from { transform: scaleY(0.3); opacity: 0.3; }
+      to   { transform: scaleY(1.0); opacity: 0.8; }
+    }
+
+    /* Thinking indicator */
+    .thinking-row {
+      display: flex; align-items: center; gap: 6px;
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      background: rgba(99,102,241,0.06);
+      border: 1px solid rgba(99,102,241,0.15);
+      font-size: 11px; color: var(--accent-2);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .thinking-row.visible { opacity: 1; }
+    .think-dot {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--accent-2);
+      animation: think-blink 1.2s ease-in-out infinite;
+    }
+    .think-dot:nth-child(2) { animation-delay: 0.2s; }
+    .think-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes think-blink {
+      0%, 100% { opacity: 0.2; }
+      50%       { opacity: 1; }
+    }
+
+    /* Ops stream (trace) */
+    .stream-wrap {
       flex: 1;
+      overflow-y: auto;
+      padding: 6px 10px 12px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(99,102,241,0.2) transparent;
+    }
+    .stream-wrap::-webkit-scrollbar { width: 4px; }
+    .stream-wrap::-webkit-scrollbar-track { background: transparent; }
+    .stream-wrap::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.25); border-radius: 4px; }
+
+    .trace-item {
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      margin-bottom: 4px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+      animation: item-in 0.2s ease-out both;
+    }
+    @keyframes item-in {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .trace-item:hover   { background: rgba(255,255,255,0.03); border-color: var(--border); }
+    .trace-item.focused { background: rgba(99,102,241,0.08); border-color: var(--border); }
+    .trace-icon {
+      width: 22px; height: 22px; border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .trace-body { flex: 1; min-width: 0; }
+    .trace-action {
+      font-size: 11px; font-weight: 600;
+      color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .trace-sponsor {
+      font-size: 10px; color: var(--text-3); margin-top: 1px;
+    }
+    .trace-time {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px; color: var(--text-3);
+      margin-top: 2px;
+    }
+    .trace-badge {
+      font-size: 9px; font-weight: 600; letter-spacing: 0.08em;
+      padding: 2px 6px; border-radius: 10px;
+      flex-shrink: 0; align-self: flex-start; margin-top: 1px;
+    }
+    .trace-badge.ok  { background: rgba(34,197,94,0.12);  color: var(--green); }
+    .trace-badge.err { background: rgba(239,68,68,0.12);  color: var(--red); }
+    .trace-badge.run { background: rgba(99,102,241,0.12); color: var(--accent-2); }
+
+    /* ── MAIN PANEL ──────────────────────────────────────────────────────── */
+    .main-panel {
+      flex: 1;
+      min-width: 0;
+      background: var(--bg);
       display: flex;
+      flex-direction: column;
       overflow: hidden;
     }
 
-    /* Code viewer */
-    .viewer {
-      flex: 1; padding: 24px; overflow: auto; background: var(--paper);
-      position: relative;
+    .main-topbar {
+      height: 52px;
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-soft);
+      flex-shrink: 0;
     }
-    .viewer pre {
+    .topbar-left {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .topbar-filename {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px; color: var(--text-2);
+    }
+    .topbar-filename span {
+      color: var(--accent-2); font-weight: 500;
+    }
+    .topbar-actions {
+      display: flex; gap: 6px;
+    }
+    .btn-sm {
+      padding: 5px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      color: var(--text-2);
+      font-size: 11px; font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-sm:hover { background: rgba(255,255,255,0.08); color: var(--text); border-color: rgba(255,255,255,0.2); }
+
+    /* Code viewer */
+    .viewer-wrap {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(99,102,241,0.2) transparent;
+    }
+    .viewer-wrap::-webkit-scrollbar { width: 5px; }
+    .viewer-wrap::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.2); border-radius: 4px; }
+
+    /* Empty state */
+    .empty-state {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 100%;
+      min-height: 300px;
+      text-align: center;
+      gap: 16px;
+      padding: 40px;
+    }
+    .empty-glow {
+      width: 80px; height: 80px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(99,102,241,0.2) 0%, transparent 70%);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 32px;
+    }
+    .empty-title {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 22px; font-weight: 700; letter-spacing: -0.01em;
+      color: var(--text);
+    }
+    .empty-sub {
+      font-size: 13px; color: var(--text-2);
+      max-width: 380px; line-height: 1.6;
+    }
+    .phone-pill {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 20px;
+      border-radius: 30px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 16px; font-weight: 500;
+      color: var(--accent-2);
+      letter-spacing: 0.04em;
+      box-shadow: 0 0 30px var(--accent-glow);
+    }
+
+    /* Action card (shown when action fires) */
+    .action-card {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: var(--radius-md);
-      padding: 20px 24px;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      margin-bottom: 16px;
+      animation: item-in 0.25s ease-out both;
+    }
+    .action-card-head {
+      padding: 14px 18px 10px;
+      display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid var(--border-soft);
+    }
+    .action-card-icon {
+      width: 32px; height: 32px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; flex-shrink: 0;
+    }
+    .action-card-title { font-size: 14px; font-weight: 600; color: var(--text); flex: 1; }
+    .action-card-badge {
+      font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
+      padding: 3px 9px; border-radius: 20px;
+    }
+    .badge-insforge  { background: var(--insforge-bg); color: var(--insforge); }
+    .badge-twilio    { background: var(--twilio-bg);   color: var(--twilio); }
+    .badge-gemini    { background: var(--gemini-bg);   color: var(--gemini); }
+    .badge-replicas  { background: var(--replicas-bg); color: var(--replicas); }
+    .badge-slack     { background: var(--slack-bg);    color: var(--slack); }
+    .badge-vercel    { background: var(--vercel-bg);   color: var(--vercel); }
+
+    .action-card-body {
+      padding: 0;
+    }
+    /* Override Prism theme bg to match our surface */
+    .action-card-body pre[class*="language-"] {
+      margin: 0;
+      border-radius: 0;
+      background: #0e0e24;
+      font-size: 12px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .action-card-body code[class*="language-"] {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 12px; line-height: 1.7;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.03);
-      animation: slide-up 0.3s ease-out;
-      position: relative;
     }
-    .viewer-header {
-      display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 12px;
+    .action-card-foot {
+      padding: 10px 18px;
+      display: flex; align-items: center; gap: 8px;
+      border-top: 1px solid var(--border-soft);
     }
-    .viewer-sponsor-badge {
-      display: inline-flex; align-items: center; gap: 5px;
-      font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
-      padding: 3px 10px; border-radius: 100px;
-      text-transform: uppercase;
+    .action-card-meta {
+      font-size: 11px; color: var(--text-3);
+      font-family: 'JetBrains Mono', monospace;
+      flex: 1;
     }
-    .copy-btn {
-      padding: 4px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm);
-      background: var(--surface); font-size: 10px; font-weight: 600; color: var(--ink-2);
-      cursor: pointer; transition: var(--transition); font-family: inherit;
-    }
-    .copy-btn:hover { background: var(--clay-tint); color: var(--clay-deep); border-color: var(--clay); }
-    .copy-btn.copied { background: rgba(62,122,69,0.1); color: var(--status-green); border-color: var(--status-green); }
+    .status-ok  { color: var(--green); }
+    .status-err { color: var(--red); }
 
-    .empty-state {
-      height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;
-      text-align: center; color: var(--ink-2); padding: 24px;
-    }
-    .empty-state h3 {
-      font-family: 'Fraunces', Georgia, serif;
-      font-size: 22px; color: var(--ink); margin-bottom: 8px; font-weight: 500;
-    }
-    .empty-state p { font-size: 13px; max-width: 380px; line-height: 1.6; }
-    .number-tag {
-      display: inline-block; margin-top: 16px; padding: 8px 20px;
-      background: var(--surface); border: 1.5px solid var(--clay);
-      border-radius: 100px; font-family: 'JetBrains Mono', monospace;
-      font-weight: 600; color: var(--clay-deep); font-size: 16px;
-      letter-spacing: 0.05em;
-    }
-    .demo-hint {
-      margin-top: 8px; font-size: 12px; color: var(--ink-3);
-    }
-
-    /* ── INTERACTIVE PANEL ───────────────────────────────────────────────── */
-    .action-panel {
-      width: 280px;
+    /* ── RIGHT PANEL (Transcript) ────────────────────────────────────────── */
+    .right-panel {
+      width: var(--right-w);
+      flex-shrink: 0;
       background: var(--surface);
       border-left: 1px solid var(--border);
       display: flex;
       flex-direction: column;
-      flex-shrink: 0;
-      overflow-y: auto;
+      overflow: hidden;
     }
-    .action-panel::-webkit-scrollbar { width: 4px; }
-    .action-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
-    .panel-section {
-      padding: 16px;
+    .panel-header {
+      padding: 14px 16px 12px;
       border-bottom: 1px solid var(--border-soft);
+      display: flex; align-items: center; gap: 8px;
+      flex-shrink: 0;
     }
-    .panel-title {
-      font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
-      color: var(--ink-3); font-weight: 600; margin-bottom: 10px;
+    .panel-header-title {
+      font-size: 12px; font-weight: 600; letter-spacing: 0.04em;
+      color: var(--text-2);
+      text-transform: uppercase;
+      flex: 1;
+    }
+    .conn-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--text-3);
+      flex-shrink: 0;
+    }
+    .conn-dot.connected    { background: var(--green); animation: dot-pulse 1.8s ease-in-out infinite; }
+    .conn-dot.disconnected { background: var(--red); }
+
+    /* Transcript scroll area */
+    .transcript-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 12px 16px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(99,102,241,0.15) transparent;
+    }
+    .transcript-scroll::-webkit-scrollbar { width: 3px; }
+    .transcript-scroll::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.2); border-radius: 4px; }
+
+    .tx-empty {
+      padding: 30px 16px;
+      text-align: center;
+      color: var(--text-3);
+      font-size: 12px;
+      line-height: 1.7;
+    }
+    .tx-empty-icon { font-size: 28px; margin-bottom: 10px; }
+
+    .tx-msg {
+      margin-bottom: 10px;
+      animation: item-in 0.2s ease-out both;
+    }
+    .tx-role {
+      font-size: 10px; font-weight: 600; letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .tx-role.agent { color: var(--accent-2); }
+    .tx-role.user  { color: var(--text-3); }
+    .tx-bubble {
+      padding: 8px 12px;
+      border-radius: var(--radius-md);
+      font-size: 12px; line-height: 1.55;
+      max-width: 100%;
+    }
+    .tx-bubble.agent {
+      background: rgba(99,102,241,0.1);
+      border: 1px solid rgba(99,102,241,0.15);
+      color: var(--text);
+      border-radius: var(--radius-md) var(--radius-md) var(--radius-md) 4px;
+    }
+    .tx-bubble.user {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border-soft);
+      color: var(--text-2);
+      border-radius: var(--radius-md) var(--radius-md) 4px var(--radius-md);
     }
 
-    /* Demo commands */
-    .demo-cmd {
-      display: flex; align-items: flex-start; gap: 8px;
-      padding: 8px 10px; border-radius: var(--radius-sm);
-      border: 1px solid var(--border); background: var(--paper);
-      margin-bottom: 6px; cursor: pointer;
-      transition: var(--transition);
-      text-align: left; width: 100%;
+    /* Slack @gojo section */
+    .gojo-slack-section {
+      padding: 12px;
+      border-top: 1px solid var(--border-soft);
+      flex-shrink: 0;
     }
-    .demo-cmd:hover { border-color: var(--clay); background: var(--clay-tint); }
-    .demo-cmd-icon {
-      font-size: 14px; flex-shrink: 0; margin-top: 1px;
+    .gojo-slack-label {
+      font-size: 10px; font-weight: 600; letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      margin-bottom: 8px;
     }
-    .demo-cmd-text {
-      font-size: 11px; line-height: 1.4; color: var(--ink);
-      font-style: italic;
+    .gojo-slack-commands {
+      display: flex; flex-direction: column; gap: 3px;
     }
-    .demo-cmd-label {
-      font-size: 9px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 0.06em; color: var(--ink-3); margin-top: 2px;
-    }
-
-    /* Quick action forms */
-    .qa-form { display: flex; flex-direction: column; gap: 6px; }
-    .qa-input {
-      width: 100%;
-      padding: 7px 10px;
-      border: 1px solid var(--border); border-radius: var(--radius-sm);
-      background: var(--paper);
-      font-size: 12px; font-family: 'JetBrains Mono', monospace;
-      color: var(--ink);
-      outline: none;
-      transition: border-color 0.2s;
-    }
-    .qa-input:focus { border-color: var(--clay); background: var(--surface); }
-    .qa-input::placeholder { color: var(--ink-3); }
-    .qa-btn {
-      padding: 7px 12px;
-      border: none; border-radius: var(--radius-sm);
-      font-size: 11px; font-weight: 600;
-      cursor: pointer;
-      transition: var(--transition);
-      font-family: inherit;
-    }
-    .qa-btn-insforge { background: var(--insforge-bg); color: var(--insforge); }
-    .qa-btn-insforge:hover { background: var(--insforge); color: white; }
-    .qa-btn-twilio   { background: var(--twilio-bg); color: var(--twilio); }
-    .qa-btn-twilio:hover { background: var(--twilio); color: white; }
-    .qa-btn-gemini   { background: var(--gemini-bg); color: var(--gemini); }
-    .qa-btn-gemini:hover { background: var(--gemini); color: white; }
-    .qa-btn-replicas { background: var(--replicas-bg); color: var(--replicas); }
-    .qa-btn-replicas:hover { background: var(--replicas); color: white; }
-
-    .qa-row { display: flex; gap: 6px; }
-    .qa-row .qa-input { flex: 1; }
-
-    /* ── TRANSCRIPT OVERLAY ───────────────────────────────────────────────── */
-    .transcript-overlay {
-      position: absolute; bottom: 24px; left: 24px; right: 24px;
-      pointer-events: none;
-      display: flex; flex-direction: column; gap: 10px;
-      align-items: flex-end; justify-content: flex-end;
-      z-index: 10;
-    }
-    .t-bubble {
-      max-width: 520px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      padding: 12px 16px;
-      border-radius: var(--radius-lg);
-      box-shadow: 0 8px 24px rgba(27,26,23,0.1);
-      pointer-events: auto;
-      animation: vg-pop-in 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-      font-size: 13px; line-height: 1.5;
-    }
-    .t-bubble.user {
-      border-bottom-right-radius: 4px;
-      border-color: var(--clay-tint);
-    }
-    .t-bubble.agent {
-      background: var(--surface-2);
-      border-color: var(--border-soft);
-      border-bottom-left-radius: 4px;
-      align-self: flex-start;
-    }
-    .t-meta {
-      font-family: 'JetBrains Mono', monospace; font-size: 9px; text-transform: uppercase;
-      letter-spacing: 0.1em; margin-bottom: 5px; display: block;
-    }
-    .user .t-meta { color: var(--clay-deep); }
-    .agent .t-meta { color: var(--ink-2); }
-
-    /* Waveform viz */
-    .waveform {
-      display: flex; align-items: center; gap: 3px;
-      height: 20px;
-    }
-    .waveform-bar {
-      width: 3px; background: var(--status-green); border-radius: 2px;
-      animation: wave-bar var(--d, 0.8s) ease-in-out infinite alternate;
-      transform-origin: bottom;
-    }
-    @keyframes wave-bar {
-      from { height: 4px; }
-      to   { height: var(--h, 18px); }
-    }
-
-    /* Agent thinking indicator */
-    .thinking-indicator {
-      display: none; align-items: center; gap: 6px;
-      font-size: 11px; color: var(--ink-3);
+    .gojo-cmd {
       font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+      background: rgba(224,30,90,0.06);
+      border: 1px solid rgba(224,30,90,0.12);
+      color: var(--text-2);
     }
-    .thinking-indicator.visible { display: flex; }
-    .thinking-dot {
-      width: 5px; height: 5px; border-radius: 50%;
-      background: var(--clay);
-      animation: agent-thinking 0.8s ease-in-out infinite;
-    }
-    .thinking-dot:nth-child(2) { animation-delay: 0.15s; }
-    .thinking-dot:nth-child(3) { animation-delay: 0.3s; }
 
-    /* Sponsor color helpers */
-    .c-insforge { color: var(--insforge); }
-    .c-twilio   { color: var(--twilio); }
-    .c-gemini   { color: var(--gemini); }
-    .c-replicas { color: var(--replicas); }
-    .c-vercel   { color: #555; }
-    .bg-insforge { background: var(--insforge-bg); border-color: rgba(99,102,241,0.2); }
-    .bg-twilio   { background: var(--twilio-bg);   border-color: rgba(242,47,70,0.2); }
-    .bg-gemini   { background: var(--gemini-bg);   border-color: rgba(66,133,244,0.2); }
-    .bg-replicas { background: var(--replicas-bg); border-color: rgba(22,163,74,0.2); }
-
-    /* Scrollbar for action panel */
-    .action-panel::-webkit-scrollbar { width: 4px; }
-    .action-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-
-    /* Notification toast */
-    .toast-stack {
-      position: fixed; bottom: 20px; right: 20px;
-      display: flex; flex-direction: column; gap: 8px;
-      z-index: 100; pointer-events: none;
+    /* ── TOAST ────────────────────────────────────────────────────────────── */
+    .toast-wrap {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      display: flex; flex-direction: column; gap: 6px;
+      z-index: 9000; pointer-events: none;
     }
     .toast {
-      background: var(--ink); color: white;
-      padding: 10px 16px; border-radius: var(--radius-md);
+      padding: 9px 16px;
+      border-radius: var(--radius-md);
       font-size: 12px; font-weight: 500;
-      animation: vg-pop-in 0.25s ease-out forwards;
+      color: white;
+      animation: item-in 0.25s ease-out forwards;
       pointer-events: auto;
     }
-    .toast.success { background: var(--status-green); }
-    .toast.error   { background: var(--status-red); }
+    .toast.ok  { background: rgba(34,197,94,0.9);  backdrop-filter: blur(8px); border: 1px solid rgba(34,197,94,0.4); }
+    .toast.err { background: rgba(239,68,68,0.9);  backdrop-filter: blur(8px); border: 1px solid rgba(239,68,68,0.4); }
+    .toast.inf { background: rgba(99,102,241,0.9); backdrop-filter: blur(8px); border: 1px solid rgba(99,102,241,0.4); }
+
+    /* ── MOBILE BOTTOM NAV ───────────────────────────────────────────────── */
+    .mobile-nav {
+      display: none;
+      position: fixed; bottom: 0; left: 0; right: 0;
+      height: var(--nav-h);
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      z-index: 100;
+      padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    }
+    .mobile-nav-inner {
+      display: flex;
+      height: 100%;
+    }
+    .nav-tab {
+      flex: 1;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 3px;
+      border: none; background: none;
+      color: var(--text-3);
+      font-size: 10px; font-weight: 500;
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+    .nav-tab.active { color: var(--accent-2); }
+    .nav-tab svg { width: 20px; height: 20px; }
 
     /* ── SPLASH SCREEN ───────────────────────────────────────────────────── */
     #splash {
@@ -506,27 +607,20 @@
       transition: opacity 0.9s cubic-bezier(0.4, 0, 0.2, 1),
                   visibility 0.9s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    #splash.out {
-      opacity: 0; visibility: hidden; pointer-events: none;
-    }
+    #splash.out { opacity: 0; visibility: hidden; pointer-events: none; }
 
-    /* Orbit container — the whole ring + center together */
     .splash-orbit {
       position: relative;
       width: 380px; height: 380px;
     }
-
-    /* The ring that rotates, carrying the logos with it */
     .splash-ring {
       position: absolute; inset: 0;
       animation: splash-spin 14s linear infinite;
     }
-
-    /* Each sponsor icon positioned on the ring via CSS sin/cos */
     .splash-logo {
       position: absolute;
       width: 58px; height: 58px;
-      top: calc(50% - 29px + 155px * sin(var(--a)));
+      top:  calc(50% - 29px + 155px * sin(var(--a)));
       left: calc(50% - 29px + 155px * cos(var(--a)));
       border-radius: 16px;
       display: flex; flex-direction: column;
@@ -537,18 +631,20 @@
       opacity: 0;
       border: 1.5px solid rgba(255,255,255,0.08);
     }
-    .splash-logo.visible { animation: splash-counter-spin 14s linear infinite, splash-logo-in 0.5s ease-out var(--delay, 0s) forwards; }
+    .splash-logo.visible {
+      animation: splash-counter-spin 14s linear infinite,
+                 splash-logo-in 0.5s ease-out var(--delay, 0s) forwards;
+    }
     .splash-logo-name {
       font-size: 8px; font-weight: 700; letter-spacing: 0.08em;
       text-transform: uppercase; color: white; opacity: 0.85;
       font-family: 'Inter', system-ui, sans-serif;
     }
-
-    .sl-insforge { background: #3730a3; --a: -90deg;   --delay: 0.1s; }
-    .sl-twilio   { background: #b91c1c; --a: -18deg;   --delay: 0.25s; }
-    .sl-gemini   { background: #1d4ed8; --a:  54deg;   --delay: 0.4s; }
-    .sl-replicas { background: #15803d; --a: 126deg;   --delay: 0.55s; }
-    .sl-vercel   { background: #1a1a1a; --a: 198deg;   --delay: 0.7s; }
+    .sl-insforge { background: #3730a3; --a: -90deg;  --delay: 0.10s; }
+    .sl-twilio   { background: #b91c1c; --a: -18deg;  --delay: 0.25s; }
+    .sl-gemini   { background: #1d4ed8; --a:  54deg;  --delay: 0.40s; }
+    .sl-replicas { background: #15803d; --a: 126deg;  --delay: 0.55s; }
+    .sl-vercel   { background: #1a1a1a; --a: 198deg;  --delay: 0.70s; }
 
     @keyframes splash-spin         { to { transform: rotate(360deg); } }
     @keyframes splash-counter-spin { to { transform: rotate(-360deg); } }
@@ -557,7 +653,6 @@
       to   { opacity: 1; transform: rotate(-360deg) scale(1); }
     }
 
-    /* Center glow ring */
     .splash-center-ring {
       position: absolute; inset: 0;
       display: flex; align-items: center; justify-content: center;
@@ -574,8 +669,6 @@
       0%, 100% { transform: scale(1);    box-shadow: 0 0 30px rgba(99,102,241,0.15); }
       50%       { transform: scale(1.04); box-shadow: 0 0 60px rgba(99,102,241,0.3); }
     }
-
-    /* Center logo circle */
     .splash-center {
       position: absolute; inset: 0;
       display: flex; align-items: center; justify-content: center;
@@ -592,8 +685,6 @@
       from { transform: scale(0); opacity: 0; }
       to   { transform: scale(1); opacity: 1; }
     }
-
-    /* Project name + subtitle */
     .splash-text {
       margin-top: 28px;
       text-align: center;
@@ -607,8 +698,7 @@
       font-family: 'Fraunces', Georgia, serif;
       font-size: 42px; font-weight: 700; letter-spacing: -0.02em;
       background: linear-gradient(135deg, #c7b8ff 0%, #8b7cf8 50%, #6366f1 100%);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      background-clip: text;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
       line-height: 1;
     }
     .splash-tagline {
@@ -616,8 +706,6 @@
       font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase;
       color: rgba(255,255,255,0.35); margin-top: 8px;
     }
-
-    /* Loading dots */
     .splash-loading {
       display: flex; gap: 7px; margin-top: 28px;
       animation: splash-text-in 0.5s ease-out 1s both;
@@ -633,9 +721,35 @@
       0%, 100% { transform: scale(1);   opacity: 0.4; }
       50%       { transform: scale(1.5); opacity: 1; background: #8b7cf8; }
     }
-
-    /* Sponsor icon SVGs inside .splash-logo */
     .sl-icon { width: 26px; height: 26px; }
+
+    /* ── RESPONSIVE ──────────────────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .sidebar, .right-panel { display: none; }
+      .main-panel { width: 100%; }
+    }
+    @media (max-width: 900px) {
+      .mobile-nav { display: flex; }
+      .app { padding-bottom: var(--nav-h); }
+      .sidebar.mobile-active,
+      .right-panel.mobile-active {
+        display: flex;
+        position: fixed;
+        top: 0; bottom: var(--nav-h); left: 0; right: 0;
+        width: 100%;
+        z-index: 50;
+      }
+    }
+    @media (max-width: 600px) {
+      .splash-orbit { width: 280px; height: 280px; }
+      .splash-logo {
+        width: 46px; height: 46px;
+        top:  calc(50% - 23px + 115px * sin(var(--a)));
+        left: calc(50% - 23px + 115px * cos(var(--a)));
+      }
+      .splash-logo-circle { width: 110px; height: 110px; }
+      .splash-project-name { font-size: 34px; }
+    }
   </style>
 </head>
 <body>
@@ -644,9 +758,7 @@
   <div id="splash">
     <div class="splash-orbit">
 
-      <!-- Spinning ring with sponsor logos -->
       <div class="splash-ring" id="splash-ring">
-
         <!-- InsForge -->
         <div class="splash-logo sl-insforge">
           <svg class="sl-icon" viewBox="0 0 26 26" fill="none">
@@ -657,7 +769,6 @@
           </svg>
           <span class="splash-logo-name">InsForge</span>
         </div>
-
         <!-- Twilio -->
         <div class="splash-logo sl-twilio">
           <svg class="sl-icon" viewBox="0 0 26 26" fill="none">
@@ -669,7 +780,6 @@
           </svg>
           <span class="splash-logo-name">Twilio</span>
         </div>
-
         <!-- Gemini -->
         <div class="splash-logo sl-gemini">
           <svg class="sl-icon" viewBox="0 0 26 26" fill="none">
@@ -679,7 +789,6 @@
           </svg>
           <span class="splash-logo-name">Gemini</span>
         </div>
-
         <!-- Replicas -->
         <div class="splash-logo sl-replicas">
           <svg class="sl-icon" viewBox="0 0 26 26" fill="none">
@@ -692,7 +801,6 @@
           </svg>
           <span class="splash-logo-name">Replicas</span>
         </div>
-
         <!-- Vercel -->
         <div class="splash-logo sl-vercel">
           <svg class="sl-icon" viewBox="0 0 26 26" fill="none">
@@ -700,69 +808,42 @@
           </svg>
           <span class="splash-logo-name">Vercel</span>
         </div>
-
       </div><!-- /splash-ring -->
 
-      <!-- Center glow ring -->
       <div class="splash-center-ring"></div>
 
-      <!-- Center: Gojo cartoon logo -->
       <div class="splash-center">
         <div class="splash-logo-circle">
-          <!-- Cartoon Gojo: fluffy white hair + blindfold -->
+          <!-- Cartoon Gojo SVG -->
           <svg width="110" height="120" viewBox="0 0 110 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <!-- ── FLUFFY HAIR CLOUD ─────────────────── -->
-            <!-- Big fluffy hair base -->
             <ellipse cx="55" cy="42" rx="40" ry="36" fill="#f0f0f2"/>
-            <!-- Hair puff top left -->
             <circle cx="28" cy="28" r="18" fill="#e8e8ec"/>
-            <!-- Hair puff top center -->
             <circle cx="55" cy="18" r="20" fill="#f5f5f8"/>
-            <!-- Hair puff top right -->
             <circle cx="82" cy="28" r="18" fill="#e8e8ec"/>
-            <!-- Hair puff sides -->
             <circle cx="16" cy="48" r="14" fill="#ebebef"/>
             <circle cx="94" cy="48" r="14" fill="#ebebef"/>
-            <!-- Hair shine highlight -->
             <ellipse cx="42" cy="24" rx="9" ry="5" fill="white" opacity="0.55" transform="rotate(-25 42 24)"/>
             <ellipse cx="67" cy="20" rx="7" ry="4" fill="white" opacity="0.4" transform="rotate(15 67 20)"/>
-
-            <!-- ── FACE ─────────────────────────────── -->
             <ellipse cx="55" cy="74" rx="28" ry="32" fill="#ffdfc0"/>
-            <!-- Ears -->
             <ellipse cx="27" cy="72" rx="7" ry="9" fill="#ffdfc0"/>
             <ellipse cx="83" cy="72" rx="7" ry="9" fill="#ffdfc0"/>
-            <!-- Inner ear -->
             <ellipse cx="27" cy="72" rx="4" ry="6" fill="#f5c8a0"/>
             <ellipse cx="83" cy="72" rx="4" ry="6" fill="#f5c8a0"/>
-
-            <!-- ── BLINDFOLD (Gojo signature) ────────── -->
             <rect x="24" y="63" width="62" height="17" rx="5" fill="#12122a"/>
-            <!-- Blindfold fabric texture -->
             <rect x="26" y="65" width="58" height="3" rx="2" fill="#1e1e40" opacity="0.6"/>
-            <!-- Subtle blue shimmer on blindfold -->
-            <rect x="24" y="63" width="62" height="17" rx="5" fill="url(#blindfold-grad)" opacity="0.3"/>
+            <rect x="24" y="63" width="62" height="17" rx="5" fill="url(#bg2)" opacity="0.3"/>
             <defs>
-              <linearGradient id="blindfold-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <linearGradient id="bg2" x1="0%" y1="0%" x2="100%" y2="0%">
                 <stop offset="0%" stop-color="#6366f1" stop-opacity="0"/>
                 <stop offset="50%" stop-color="#818cf8" stop-opacity="0.8"/>
                 <stop offset="100%" stop-color="#6366f1" stop-opacity="0"/>
               </linearGradient>
             </defs>
-
-            <!-- ── NOSE ──────────────────────────────── -->
             <ellipse cx="55" cy="88" rx="4" ry="2.5" fill="#f0a875" opacity="0.5"/>
-
-            <!-- ── MOUTH: cheeky smile ────────────────── -->
             <path d="M44 98 Q55 108 66 98" stroke="#c87050" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-            <!-- Mouth highlight -->
             <path d="M47 99 Q55 106 63 99" stroke="#e89070" stroke-width="1" fill="none" stroke-linecap="round" opacity="0.5"/>
-
-            <!-- ── CHEEK BLUSH ────────────────────────── -->
             <ellipse cx="36" cy="92" rx="7" ry="4" fill="#f4a090" opacity="0.25"/>
             <ellipse cx="74" cy="92" rx="7" ry="4" fill="#f4a090" opacity="0.25"/>
-
-            <!-- ── HAIR STRANDS (front) ──────────────── -->
             <path d="M32 52 Q26 44 28 36" stroke="#dcdce8" stroke-width="4" stroke-linecap="round" fill="none"/>
             <path d="M40 48 Q36 38 38 28" stroke="#e4e4f0" stroke-width="3.5" stroke-linecap="round" fill="none"/>
             <path d="M78 52 Q84 44 82 36" stroke="#dcdce8" stroke-width="4" stroke-linecap="round" fill="none"/>
@@ -770,16 +851,12 @@
           </svg>
         </div>
       </div>
-
     </div><!-- /splash-orbit -->
 
-    <!-- Text below the orbit -->
     <div class="splash-text">
       <div class="splash-project-name">Gojo</div>
       <div class="splash-tagline">InsForge Voice Control</div>
     </div>
-
-    <!-- Loading dots -->
     <div class="splash-loading">
       <div class="splash-dot"></div>
       <div class="splash-dot"></div>
@@ -787,774 +864,537 @@
     </div>
   </div><!-- /#splash -->
 
-  <!-- ── SIDEBAR ─────────────────────────────────────────────────────────── -->
-  <aside class="sidebar">
-    <div class="brand-header">
-      <div class="brand-icon">F</div>
-      <div class="brand-title">InsForge Control</div>
-      <span class="brand-badge">LIVE</span>
-    </div>
+  <!-- ── APP ────────────────────────────────────────────────────────────── -->
+  <div class="app" id="app">
 
-    <!-- Sponsor filter pills -->
-    <div class="sponsors-bar" id="sponsor-filters">
-      <button class="sp sp-insforge" data-sponsor="insforge" data-active="true" onclick="toggleSponsor('insforge')">
-        <span class="sp-dot"></span>InsForge
-      </button>
-      <button class="sp sp-twilio" data-sponsor="twilio" data-active="true" onclick="toggleSponsor('twilio')">
-        <span class="sp-dot"></span>Twilio
-      </button>
-      <button class="sp sp-gemini" data-sponsor="gemini" data-active="true" onclick="toggleSponsor('gemini')">
-        <span class="sp-dot"></span>Gemini
-      </button>
-      <button class="sp sp-replicas" data-sponsor="replicas" data-active="true" onclick="toggleSponsor('replicas')">
-        <span class="sp-dot"></span>Replicas
-      </button>
-    </div>
+    <!-- LEFT SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="brand-header">
+        <div class="brand-icon">G</div>
+        <div class="brand-title">Gojo</div>
+        <span class="live-badge">LIVE</span>
+      </div>
 
-    <!-- Status section -->
-    <div class="nav-section">
-      <div class="nav-label">Live Session</div>
-      <div class="status-pill waiting" id="status-pill">
-        <div class="dot"></div>
-        <span id="status-text">Awaiting Call</span>
+      <!-- Sponsor filters -->
+      <div class="sponsors-bar" id="sponsor-filters">
+        <button class="sp sp-insforge active" data-sponsor="insforge" onclick="toggleSponsor('insforge', this)">
+          <span class="sp-dot"></span>InsForge
+        </button>
+        <button class="sp sp-twilio active" data-sponsor="twilio" onclick="toggleSponsor('twilio', this)">
+          <span class="sp-dot"></span>Twilio
+        </button>
+        <button class="sp sp-gemini active" data-sponsor="gemini" onclick="toggleSponsor('gemini', this)">
+          <span class="sp-dot"></span>Gemini
+        </button>
+        <button class="sp sp-replicas active" data-sponsor="replicas" onclick="toggleSponsor('replicas', this)">
+          <span class="sp-dot"></span>Replicas
+        </button>
+        <button class="sp sp-slack active" data-sponsor="slack" onclick="toggleSponsor('slack', this)">
+          <span class="sp-dot"></span>Slack
+        </button>
       </div>
-      <div class="telemetry">
-        <div class="t-row"><span class="t-lbl">Call SID</span><span class="t-val" id="val-sid">—</span></div>
-        <div class="t-row"><span class="t-lbl">Duration</span><span class="t-val" id="val-time">0:00</span></div>
-        <div class="t-row"><span class="t-lbl">Actions</span><span class="t-val" id="val-actions">0</span></div>
-        <div class="t-row"><span class="t-lbl">Caller</span><span class="t-val" id="val-caller">—</span></div>
-      </div>
-      <!-- Waveform — visible when active -->
-      <div class="waveform" id="waveform" style="margin-top:12px; display:none;">
-        <div class="waveform-bar" style="--h:8px; --d:0.6s;"></div>
-        <div class="waveform-bar" style="--h:16px; --d:0.8s;"></div>
-        <div class="waveform-bar" style="--h:12px; --d:0.5s;"></div>
-        <div class="waveform-bar" style="--h:18px; --d:0.9s;"></div>
-        <div class="waveform-bar" style="--h:10px; --d:0.7s;"></div>
-        <div class="waveform-bar" style="--h:14px; --d:0.65s;"></div>
-        <div class="waveform-bar" style="--h:8px;  --d:0.85s;"></div>
-      </div>
-    </div>
 
-    <!-- Execution trace -->
-    <div class="nav-section" style="border:none; padding-bottom:6px; padding-top:12px;">
-      <div class="nav-label">Execution Trace</div>
-      <div class="thinking-indicator" id="thinking-indicator">
-        <div class="thinking-dot"></div>
-        <div class="thinking-dot"></div>
-        <div class="thinking-dot"></div>
-        <span>agent working…</span>
+      <!-- Session status -->
+      <div class="sidebar-section">
+        <div class="section-label">Live Session</div>
+        <div class="status-pill waiting" id="status-pill">
+          <div class="status-dot"></div>
+          <span id="status-text">Awaiting Call</span>
+        </div>
+        <div class="telemetry">
+          <div class="t-row"><span class="t-lbl">Call SID</span><span class="t-val" id="val-sid">—</span></div>
+          <div class="t-row"><span class="t-lbl">Duration</span><span class="t-val" id="val-time">0:00</span></div>
+          <div class="t-row"><span class="t-lbl">Actions</span><span class="t-val" id="val-actions">0</span></div>
+          <div class="t-row"><span class="t-lbl">Caller</span><span class="t-val" id="val-caller">—</span></div>
+        </div>
+        <div class="waveform" id="waveform" style="display:none">
+          <div class="waveform-bar" style="--h:8px;  --d:0.6s;"></div>
+          <div class="waveform-bar" style="--h:16px; --d:0.8s;"></div>
+          <div class="waveform-bar" style="--h:12px; --d:0.5s;"></div>
+          <div class="waveform-bar" style="--h:18px; --d:0.9s;"></div>
+          <div class="waveform-bar" style="--h:10px; --d:0.7s;"></div>
+          <div class="waveform-bar" style="--h:14px; --d:0.65s;"></div>
+          <div class="waveform-bar" style="--h:8px;  --d:0.85s;"></div>
+        </div>
       </div>
-    </div>
-    <div class="stream-container" id="ops-stream"></div>
-  </aside>
 
-  <!-- ── MAIN AREA ─────────────────────────────────────────────────────────── -->
-  <main class="main-area">
-    <div class="top-bar">
-      <div class="top-bar-title">
-        Current View: <span class="tab" id="tab-name">telemetry.log</span>
+      <!-- Execution trace -->
+      <div class="sidebar-section" style="border-bottom:none; padding-bottom:4px;">
+        <div class="section-label">Execution Trace</div>
+        <div class="thinking-row" id="thinking-row">
+          <div class="think-dot"></div>
+          <div class="think-dot"></div>
+          <div class="think-dot"></div>
+          <span style="font-size:11px;color:var(--accent-2);">agent working…</span>
+        </div>
       </div>
-      <div class="top-bar-actions">
-        <button class="btn-sm" onclick="exportLog()">Export Log</button>
-        <button class="btn-sm" onclick="clearViewer()">Clear</button>
-        <button class="btn-sm primary" onclick="runDemoSequence()">▶ Run Demo</button>
-      </div>
-    </div>
+      <div class="stream-wrap" id="ops-stream"></div>
+    </aside>
 
-    <div class="content-area">
-      <div class="viewer" id="code-viewer">
+    <!-- MAIN PANEL (diff/code viewer) -->
+    <main class="main-panel" id="main-panel">
+      <div class="main-topbar">
+        <div class="topbar-left">
+          <div class="topbar-filename">
+            <span id="tab-name">telemetry.log</span>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn-sm" onclick="exportLog()">Export</button>
+          <button class="btn-sm" onclick="clearViewer()">Clear</button>
+        </div>
+      </div>
+
+      <div class="viewer-wrap" id="viewer-wrap">
         <div class="empty-state" id="empty-state">
-          <h3>Voice-Activated Infrastructure</h3>
-          <p>Dial the number to control InsForge Postgres, Edge Functions, Realtime, and AI — all by voice. Or click <strong>Run Demo</strong> to see it live.</p>
-          <div class="number-tag">+1 (925) 515-5725</div>
-          <div class="demo-hint">No call needed → use the Demo buttons on the right →</div>
+          <div class="empty-glow">🎙️</div>
+          <div class="empty-title">Voice-Activated Infrastructure</div>
+          <div class="empty-sub">Dial in and talk to Gojo. Real InsForge changes appear here as diffs — Postgres, Edge Functions, Realtime, Storage, AI.</div>
+          <div class="phone-pill">📞 +1 (925) 515-5725</div>
+        </div>
+      </div>
+    </main>
+
+    <!-- RIGHT PANEL (live transcript) -->
+    <aside class="right-panel" id="right-panel">
+      <div class="panel-header">
+        <div class="panel-header-title">Live Transcript</div>
+        <div class="conn-dot" id="conn-dot"></div>
+        <span style="font-size:10px;color:var(--text-3)" id="conn-label">offline</span>
+      </div>
+
+      <div class="transcript-scroll" id="transcript-scroll">
+        <div class="tx-empty" id="tx-empty">
+          <div class="tx-empty-icon">💬</div>
+          Call in on<br><strong style="color:var(--text-2)">+1 (925) 515-5725</strong><br>and speak to Gojo.<br><br>Your conversation will appear here in real time.
         </div>
       </div>
 
-      <!-- Transcript overlay inside content area -->
-      <div class="transcript-overlay" id="transcript-overlay"></div>
-    </div>
-  </main>
-
-  <!-- ── ACTION PANEL (right) ─────────────────────────────────────────────── -->
-  <aside class="action-panel">
-
-    <!-- Demo script buttons -->
-    <div class="panel-section">
-      <div class="panel-title">Demo Script</div>
-      <button class="demo-cmd" onclick="fireDemo('show_calls')">
-        <span class="demo-cmd-icon">🟣</span>
-        <div>
-          <div class="demo-cmd-text">"Show me the last 5 calls"</div>
-          <div class="demo-cmd-label">InsForge · Postgres</div>
+      <!-- @gojo Slack quick-reference -->
+      <div class="gojo-slack-section">
+        <div class="gojo-slack-label">@gojo via Slack</div>
+        <div class="gojo-slack-commands">
+          <div class="gojo-cmd">/gojo sql SELECT * FROM voice_calls</div>
+          <div class="gojo-cmd">/gojo logs</div>
+          <div class="gojo-cmd">/gojo code add auth to edge fn</div>
+          <div class="gojo-cmd">/gojo analyze high latency data</div>
         </div>
-      </button>
-      <button class="demo-cmd" onclick="fireDemo('add_index')">
-        <span class="demo-cmd-icon">🟣</span>
-        <div>
-          <div class="demo-cmd-text">"Add an index on call_sid"</div>
-          <div class="demo-cmd-label">InsForge · Postgres</div>
-        </div>
-      </button>
-      <button class="demo-cmd" onclick="fireDemo('deploy_fn')">
-        <span class="demo-cmd-icon">🟣</span>
-        <div>
-          <div class="demo-cmd-text">"Deploy an analytics edge function"</div>
-          <div class="demo-cmd-label">InsForge · Edge Functions</div>
-        </div>
-      </button>
-      <button class="demo-cmd" onclick="fireDemo('get_logs')">
-        <span class="demo-cmd-icon">🟣</span>
-        <div>
-          <div class="demo-cmd-text">"Check the InsForge logs for errors"</div>
-          <div class="demo-cmd-label">InsForge · Logs</div>
-        </div>
-      </button>
-      <button class="demo-cmd" onclick="fireDemo('analyze_ai')">
-        <span class="demo-cmd-icon">🔵</span>
-        <div>
-          <div class="demo-cmd-text">"Analyze these results for anomalies"</div>
-          <div class="demo-cmd-label">Gemini · AI Gateway</div>
-        </div>
-      </button>
-      <button class="demo-cmd" onclick="fireDemo('send_sms')">
-        <span class="demo-cmd-icon">🔴</span>
-        <div>
-          <div class="demo-cmd-text">"Text me a summary"</div>
-          <div class="demo-cmd-label">Twilio · SMS</div>
-        </div>
-      </button>
-      <button class="demo-cmd" onclick="fireDemo('coding_agent')">
-        <span class="demo-cmd-icon">🟢</span>
-        <div>
-          <div class="demo-cmd-text">"Write a migration for archiving old calls"</div>
-          <div class="demo-cmd-label">Replicas · Coding Agent</div>
-        </div>
-      </button>
-    </div>
-
-    <!-- Interactive SQL -->
-    <div class="panel-section">
-      <div class="panel-title">Run SQL Query · InsForge</div>
-      <div class="qa-form">
-        <textarea class="qa-input" id="sql-input" rows="3"
-          placeholder="SELECT * FROM voice_calls LIMIT 5"
-          style="resize:vertical; line-height:1.5;"></textarea>
-        <button class="qa-btn qa-btn-insforge" onclick="runSqlManual()">
-          Execute on InsForge Postgres →
-        </button>
       </div>
-    </div>
-
-    <!-- Add Index -->
-    <div class="panel-section">
-      <div class="panel-title">Add Index · InsForge</div>
-      <div class="qa-form">
-        <div class="qa-row">
-          <input class="qa-input" id="idx-table" placeholder="table name" />
-          <input class="qa-input" id="idx-col" placeholder="column" />
-        </div>
-        <button class="qa-btn qa-btn-insforge" onclick="addIndexManual()">
-          Create Index →
-        </button>
-      </div>
-    </div>
-
-    <!-- Send SMS -->
-    <div class="panel-section">
-      <div class="panel-title">Send SMS · Twilio</div>
-      <div class="qa-form">
-        <input class="qa-input" id="sms-to" placeholder="+14155551234" />
-        <textarea class="qa-input" id="sms-body" rows="2"
-          placeholder="Your InsForge summary…"
-          style="resize:none;"></textarea>
-        <button class="qa-btn qa-btn-twilio" onclick="sendSmsManual()">
-          Send via Twilio →
-        </button>
-      </div>
-    </div>
-
-    <!-- Coding agent -->
-    <div class="panel-section">
-      <div class="panel-title">Spawn Coding Agent · Replicas</div>
-      <div class="qa-form">
-        <textarea class="qa-input" id="agent-task" rows="3"
-          placeholder="Write a TypeScript migration to archive voice_calls older than 30 days…"
-          style="resize:vertical;"></textarea>
-        <button class="qa-btn qa-btn-replicas" onclick="spawnAgentManual()">
-          Spawn Replicas Agent →
-        </button>
-      </div>
-    </div>
-
-    <!-- AI analysis -->
-    <div class="panel-section">
-      <div class="panel-title">AI Analysis · Gemini</div>
-      <div class="qa-form">
-        <input class="qa-input" id="ai-question" placeholder="What anomalies exist in the data?" />
-        <textarea class="qa-input" id="ai-data" rows="3"
-          placeholder="Paste logs or query results…"
-          style="resize:vertical;"></textarea>
-        <button class="qa-btn qa-btn-gemini" onclick="analyzeManual()">
-          Analyze with Gemini →
-        </button>
-      </div>
-    </div>
-
-  </aside>
+    </aside>
+  </div><!-- /#app -->
 
   <!-- Toast container -->
-  <div class="toast-stack" id="toast-stack"></div>
+  <div class="toast-wrap" id="toast-wrap"></div>
+
+  <!-- Mobile bottom nav -->
+  <nav class="mobile-nav" id="mobile-nav">
+    <div class="mobile-nav-inner">
+      <button class="nav-tab" id="nav-trace" onclick="showMobilePanel('trace')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M3 12h4l3-9 4 18 3-9h4"/>
+        </svg>
+        Trace
+      </button>
+      <button class="nav-tab active" id="nav-viewer" onclick="showMobilePanel('viewer')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 8h10M7 12h6M7 16h8"/>
+        </svg>
+        Viewer
+      </button>
+      <button class="nav-tab" id="nav-transcript" onclick="showMobilePanel('transcript')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        Transcript
+      </button>
+    </div>
+  </nav>
 
   <script>
-    const SSE_URL = "/api/events";
-    let callStartTime = null;
-    let actionCount = 0;
-    let timerInterval = null;
-    let currentSponsor = null;
-    let allEvents = [];
-    const activeSponsorFilters = new Set(['insforge','twilio','gemini','replicas','vercel']);
+    // ── STATE ────────────────────────────────────────────────────────────────
+    const state = {
+      callSid: null,
+      startTime: null,
+      actionCount: 0,
+      timerInterval: null,
+      activeFilters: new Set(['insforge','twilio','gemini','replicas','slack']),
+      activeTraceItem: null,
+      events: [],
+    };
 
-    // ── SPLASH ─────────────────────────────────────────────────────────────
-    let splashMinDone = false;
-    let splashSseReady = false;
+    // ── SPLASH ───────────────────────────────────────────────────────────────
+    (function initSplash() {
+      const logos = document.querySelectorAll('.splash-logo');
+      logos.forEach(l => setTimeout(() => l.classList.add('visible'), 50));
 
-    // Animate sponsor logos in on load
-    window.addEventListener('DOMContentLoaded', () => {
-      document.querySelectorAll('.splash-logo').forEach(el => el.classList.add('visible'));
-    });
+      setTimeout(() => {
+        document.getElementById('splash').classList.add('out');
+        connectSSE();
+      }, 3200);
+    })();
 
-    function tryDismissSplash() {
-      if (!splashMinDone || !splashSseReady) return;
-      const splash = document.getElementById('splash');
-      if (!splash) return;
-      splash.classList.add('out');
-      setTimeout(() => splash.remove(), 1000);
-    }
+    // ── SSE CONNECTION ────────────────────────────────────────────────────────
+    let sseSource = null;
 
-    // Minimum display time: 3 seconds
-    setTimeout(() => { splashMinDone = true; tryDismissSplash(); }, 3000);
+    function connectSSE() {
+      if (sseSource) { sseSource.close(); }
 
-    // ── SPONSOR HELPERS ────────────────────────────────────────────────────
-    function sponsorKey(sponsor) {
-      if (!sponsor) return 'insforge';
-      const s = sponsor.toLowerCase();
-      if (s.includes('twilio'))   return 'twilio';
-      if (s.includes('gemini'))   return 'gemini';
-      if (s.includes('replicas')) return 'replicas';
-      if (s.includes('vercel'))   return 'vercel';
-      return 'insforge';
-    }
+      sseSource = new EventSource('/api/events');
 
-    function sponsorBadgeHTML(sponsor) {
-      if (!sponsor) return '';
-      const key = sponsorKey(sponsor);
-      const colorMap = {
-        insforge: '#6366F1', twilio: '#F22F46',
-        gemini: '#4285F4',   replicas: '#16a34a', vercel: '#555'
+      sseSource.onopen = () => {
+        setConnStatus('connected');
+        toast('Connected to Gojo realtime', 'inf');
       };
-      const bgMap = {
-        insforge: 'rgba(99,102,241,0.1)', twilio: 'rgba(242,47,70,0.1)',
-        gemini: 'rgba(66,133,244,0.1)',   replicas: 'rgba(22,163,74,0.1)', vercel: 'rgba(0,0,0,0.06)'
+
+      sseSource.onerror = () => {
+        setConnStatus('disconnected');
+        setTimeout(connectSSE, 4000);
       };
-      return `<span class="op-sponsor" style="color:${colorMap[key]};background:${bgMap[key]};">${sponsor}</span>`;
+
+      sseSource.onmessage = (e) => {
+        try {
+          const msg = JSON.parse(e.data);
+          handleEvent(msg);
+        } catch { /* ignore malformed */ }
+      };
     }
 
-    function toggleSponsor(key) {
-      if (activeSponsorFilters.has(key)) {
-        activeSponsorFilters.delete(key);
-      } else {
-        activeSponsorFilters.add(key);
+    function setConnStatus(s) {
+      const dot   = document.getElementById('conn-dot');
+      const label = document.getElementById('conn-label');
+      dot.className = 'conn-dot ' + s;
+      label.textContent = s === 'connected' ? 'live' : 'offline';
+    }
+
+    // ── EVENT HANDLER ─────────────────────────────────────────────────────────
+    function handleEvent(msg) {
+      if (!msg || !msg.type) return;
+
+      // payload may be nested under msg.payload (InsForge Realtime wraps it)
+      const ev = msg.payload ?? msg;
+
+      state.events.push(ev);
+
+      switch (ev.type) {
+        case 'call_started':
+          onCallStarted(ev);
+          break;
+        case 'transcript':
+          onTranscript(ev);
+          break;
+        case 'action_proposed':
+          addTraceItem(ev.action, ev.sponsor ?? '', 'run', ev);
+          document.getElementById('thinking-row').classList.add('visible');
+          break;
+        case 'action_executing':
+          document.getElementById('thinking-row').classList.add('visible');
+          break;
+        case 'action_done':
+          document.getElementById('thinking-row').classList.remove('visible');
+          onActionDone(ev);
+          break;
+        case 'call_ended':
+          onCallEnded(ev);
+          break;
+        case 'sms_sent':
+          addTraceItem('send_sms', 'Twilio · SMS', 'ok', ev);
+          break;
+        case 'slack_sent':
+          addTraceItem('send_slack', 'Slack · Webhooks', 'ok', ev);
+          break;
+        case 'coding_agent_started':
+          addTraceItem('spawn_coding_agent', 'Replicas · Coding Agent', 'run', ev);
+          break;
+        case 'coding_agent_done':
+          addTraceItem('spawn_coding_agent', 'Replicas · Coding Agent', 'ok', ev);
+          break;
+        case 'ai_analysis_done':
+          addTraceItem('analyze_with_ai', 'Gemini · AI Gateway', 'ok', ev);
+          break;
       }
-      document.querySelector(`[data-sponsor="${key}"]`).dataset.active = activeSponsorFilters.has(key);
-      renderStream();
     }
 
-    // ── TIMER ──────────────────────────────────────────────────────────────
-    const formatTime = (ms) => {
-      const s = Math.round(ms / 1000);
-      return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-    };
-    const updateTimer = () => {
-      if (!callStartTime) return;
-      document.getElementById('val-time').textContent = formatTime(Date.now() - callStartTime);
-    };
+    function onCallStarted(ev) {
+      state.callSid = ev.callSid;
+      state.startTime = Date.now();
+      state.actionCount = 0;
 
-    // ── STATUS ─────────────────────────────────────────────────────────────
-    const setStatus = (state) => {
-      const pill = document.getElementById('status-pill');
-      pill.className = `status-pill ${state}`;
-      const waveform = document.getElementById('waveform');
-      if (state === 'active') {
-        document.getElementById('status-text').textContent = 'Connected';
-        waveform.style.display = 'flex';
-      } else if (state === 'ended') {
-        document.getElementById('status-text').textContent = 'Call Ended';
-        waveform.style.display = 'none';
-      } else {
-        document.getElementById('status-text').textContent = 'Awaiting Call';
-        waveform.style.display = 'none';
-      }
-    };
+      setPill('active', 'Call Active');
+      document.getElementById('val-sid').textContent    = ev.callSid?.slice(-8) ?? '—';
+      document.getElementById('val-caller').textContent = ev.callerPhone ?? '—';
+      document.getElementById('val-actions').textContent = '0';
+      document.getElementById('waveform').style.display = 'flex';
+      document.getElementById('empty-state').style.display = 'none';
 
-    // ── STREAM RENDERING ───────────────────────────────────────────────────
-    let streamEvents = [];
+      if (state.timerInterval) clearInterval(state.timerInterval);
+      state.timerInterval = setInterval(() => {
+        const s = Math.floor((Date.now() - state.startTime) / 1000);
+        document.getElementById('val-time').textContent = `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+      }, 1000);
 
-    function renderStream() {
-      const stream = document.getElementById('ops-stream');
-      stream.innerHTML = '';
-      [...streamEvents].reverse().forEach(ev => {
-        const key = sponsorKey(ev.sponsor);
-        if (!activeSponsorFilters.has(key)) return;
-        stream.appendChild(createOpCardEl(ev));
-      });
+      toast(`Call started · ${ev.callerPhone ?? 'unknown'}`, 'inf');
     }
 
-    function createOpCardEl(ev) {
-      const card = document.createElement('div');
-      card.className = `op-card ${ev.state || 'exec'}`;
-      card.id = ev.domId ? `op-${ev.domId}` : '';
-      card.innerHTML = `
-        ${sponsorBadgeHTML(ev.sponsor)}
-        <div class="op-head">
-          <span class="op-name">${ev.action}()</span>
-          <span class="op-time">${ev.timeLabel || 'running…'}</span>
-        </div>
-        <div class="op-body">${ev.body || ''}</div>
-      `;
+    function onTranscript(ev) {
+      addTranscriptMsg(ev.role, ev.text);
+    }
+
+    function onActionDone(ev) {
+      state.actionCount++;
+      document.getElementById('val-actions').textContent = state.actionCount;
+
+      const status = ev.success ? 'ok' : 'err';
+      addTraceItem(ev.action, ev.sponsor ?? '', status, ev);
+
       if (ev.diff) {
-        card.addEventListener('click', () => renderCode(ev.diff, ev.lang || 'sql', `${ev.action}.diff`, ev.sponsor));
+        showDiff(ev);
       }
-      return card;
     }
 
-    function addStreamEvent(ev) {
-      // Remove existing entry with same domId
-      streamEvents = streamEvents.filter(e => !ev.domId || e.domId !== ev.domId);
-      streamEvents.push(ev);
-      renderStream();
+    function onCallEnded(ev) {
+      setPill('ended', 'Call Ended');
+      document.getElementById('waveform').style.display = 'none';
+      document.getElementById('thinking-row').classList.remove('visible');
+      if (state.timerInterval) { clearInterval(state.timerInterval); state.timerInterval = null; }
+      const s = ev.duration ?? 0;
+      document.getElementById('val-time').textContent = `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+      toast(`Call ended · ${ev.actionCount ?? state.actionCount} action(s)`, 'ok');
     }
 
-    // ── CODE VIEWER ────────────────────────────────────────────────────────
-    function sponsorViewerBadge(sponsor) {
-      if (!sponsor) return '';
-      const key = sponsorKey(sponsor);
-      const colorMap = {
-        insforge: '#6366F1', twilio: '#F22F46',
-        gemini: '#4285F4',   replicas: '#16a34a', vercel: '#555'
+    // ── SPONSOR BADGE HELPER ─────────────────────────────────────────────────
+    function sponsorClass(sponsorStr) {
+      if (!sponsorStr) return '';
+      const s = sponsorStr.toLowerCase();
+      if (s.includes('insforge'))  return 'badge-insforge';
+      if (s.includes('twilio'))    return 'badge-twilio';
+      if (s.includes('gemini'))    return 'badge-gemini';
+      if (s.includes('replicas'))  return 'badge-replicas';
+      if (s.includes('slack'))     return 'badge-slack';
+      if (s.includes('vercel'))    return 'badge-vercel';
+      return '';
+    }
+
+    function sponsorFilter(sponsorStr) {
+      if (!sponsorStr) return true;
+      const s = sponsorStr.toLowerCase();
+      if (s.includes('insforge'))  return state.activeFilters.has('insforge');
+      if (s.includes('twilio'))    return state.activeFilters.has('twilio');
+      if (s.includes('gemini'))    return state.activeFilters.has('gemini');
+      if (s.includes('replicas'))  return state.activeFilters.has('replicas');
+      if (s.includes('slack'))     return state.activeFilters.has('slack');
+      return true;
+    }
+
+    // ── TRACE ITEMS ──────────────────────────────────────────────────────────
+    function addTraceItem(action, sponsor, status, ev) {
+      if (!sponsorFilter(sponsor)) return;
+
+      const stream = document.getElementById('ops-stream');
+      const item   = document.createElement('div');
+      item.className = 'trace-item';
+      item.dataset.eventIndex = state.events.length - 1;
+
+      const icons = {
+        run_sql: '🗄️', add_index: '⚡', deploy_edge_fn: '🚀',
+        get_logs: '📋', check_storage: '🪣', send_sms: '📱',
+        spawn_coding_agent: '🤖', analyze_with_ai: '🧠', send_slack: '💬',
       };
-      const bgMap = {
-        insforge: 'rgba(99,102,241,0.1)', twilio: 'rgba(242,47,70,0.1)',
-        gemini: 'rgba(66,133,244,0.1)',   replicas: 'rgba(22,163,74,0.1)', vercel: 'rgba(0,0,0,0.05)'
-      };
-      return `<span class="viewer-sponsor-badge" style="color:${colorMap[key]};background:${bgMap[key]};">${sponsor}</span>`;
-    }
+      const icon = icons[action] ?? '⚙️';
+      const now = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
 
-    function renderCode(code, lang, filename, sponsor) {
-      document.getElementById('tab-name').textContent = filename;
-      const viewer = document.getElementById('code-viewer');
-      const empty = document.getElementById('empty-state');
-      if (empty) empty.remove();
-
-      const wrap = document.createElement('div');
-      wrap.style.animation = 'slide-up 0.3s ease-out';
-
-      const header = document.createElement('div');
-      header.className = 'viewer-header';
-      header.innerHTML = `
-        ${sponsorViewerBadge(sponsor)}
-        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      item.innerHTML = `
+        <div class="trace-icon" style="background:rgba(255,255,255,0.04)">${icon}</div>
+        <div class="trace-body">
+          <div class="trace-action">${action}</div>
+          <div class="trace-sponsor">${sponsor}</div>
+          <div class="trace-time">${now}</div>
+        </div>
+        <div class="trace-badge ${status === 'ok' ? 'ok' : status === 'err' ? 'err' : 'run'}">${status === 'run' ? '…' : status === 'ok' ? 'OK' : 'ERR'}</div>
       `;
 
-      const pre = document.createElement('pre');
-      const codeEl = document.createElement('code');
-      codeEl.className = `language-${lang}`;
-      codeEl.textContent = code;
-      pre.appendChild(codeEl);
-      pre.dataset.raw = code;
+      if (ev) {
+        item.addEventListener('click', () => {
+          document.querySelectorAll('.trace-item').forEach(i => i.classList.remove('focused'));
+          item.classList.add('focused');
+          if (ev.diff) showDiff(ev);
+          else if (ev.analysis) showAnalysis(ev);
+        });
+      }
 
-      wrap.appendChild(header);
-      wrap.appendChild(pre);
+      stream.prepend(item);
+    }
 
-      viewer.innerHTML = '';
-      viewer.appendChild(wrap);
-      hljs.highlightElement(codeEl);
+    // ── DIFF VIEWER ──────────────────────────────────────────────────────────
+    function showDiff(ev) {
+      const wrap = document.getElementById('viewer-wrap');
+      document.getElementById('empty-state').style.display = 'none';
+      document.getElementById('tab-name').textContent = ev.action + '.diff';
+
+      const card = document.createElement('div');
+      card.className = 'action-card';
+
+      const badgeClass = sponsorClass(ev.sponsor);
+
+      // Detect language from diff content
+      let lang = 'diff';
+      if (ev.diff?.includes('SELECT') || ev.diff?.includes('CREATE INDEX')) lang = 'sql';
+      else if (ev.diff?.includes('//') || ev.diff?.includes('interface') || ev.diff?.includes('const ')) lang = 'typescript';
+
+      const diffHtml = escapeHtml(ev.diff ?? '');
+      const durStr   = ev.durationMs ? `${ev.durationMs}ms` : '';
+      const statusEl = ev.success === false
+        ? `<span class="status-err">✗ failed</span>`
+        : `<span class="status-ok">✓ success</span>`;
+
+      card.innerHTML = `
+        <div class="action-card-head">
+          <div class="action-card-icon" style="background:rgba(255,255,255,0.05)">
+            ${toolEmoji(ev.action)}
+          </div>
+          <div class="action-card-title">${ev.action ?? ''}</div>
+          ${badgeClass ? `<div class="action-card-badge ${badgeClass}">${ev.sponsor ?? ''}</div>` : ''}
+        </div>
+        <div class="action-card-body">
+          <pre class="language-${lang}"><code class="language-${lang}">${diffHtml}</code></pre>
+        </div>
+        <div class="action-card-foot">
+          <div class="action-card-meta">${statusEl}</div>
+          ${durStr ? `<div class="action-card-meta" style="text-align:right">${durStr}</div>` : ''}
+        </div>
+      `;
+
+      wrap.prepend(card);
+
+      // Re-highlight with Prism after DOM insert
+      if (window.Prism) {
+        Prism.highlightAllUnder(card);
+      }
+    }
+
+    function showAnalysis(ev) {
+      const wrap = document.getElementById('viewer-wrap');
+      document.getElementById('empty-state').style.display = 'none';
+      document.getElementById('tab-name').textContent = 'ai-analysis.md';
+
+      const card = document.createElement('div');
+      card.className = 'action-card';
+      card.innerHTML = `
+        <div class="action-card-head">
+          <div class="action-card-icon">🧠</div>
+          <div class="action-card-title">AI Analysis</div>
+          <div class="action-card-badge badge-gemini">Gemini · AI Gateway</div>
+        </div>
+        <div class="action-card-body" style="padding:16px 18px;font-size:13px;line-height:1.7;color:var(--text);">
+          <strong style="color:var(--text-2);font-size:11px">Question:</strong><br>${escapeHtml(ev.question ?? '')}<br><br>
+          <strong style="color:var(--text-2);font-size:11px">Analysis:</strong><br>${escapeHtml(ev.analysis ?? '')}
+        </div>
+      `;
+      wrap.prepend(card);
+    }
+
+    // ── TRANSCRIPT ────────────────────────────────────────────────────────────
+    function addTranscriptMsg(role, text) {
+      document.getElementById('tx-empty').style.display = 'none';
+      const scroll = document.getElementById('transcript-scroll');
+
+      const msg = document.createElement('div');
+      msg.className = 'tx-msg';
+      msg.innerHTML = `
+        <div class="tx-role ${role}">${role === 'agent' ? '⚡ Gojo' : '👤 You'}</div>
+        <div class="tx-bubble ${role}">${escapeHtml(text)}</div>
+      `;
+      scroll.appendChild(msg);
+      scroll.scrollTop = scroll.scrollHeight;
+    }
+
+    // ── SPONSOR FILTER ────────────────────────────────────────────────────────
+    function toggleSponsor(name, btn) {
+      if (state.activeFilters.has(name)) {
+        state.activeFilters.delete(name);
+        btn.classList.remove('active');
+      } else {
+        state.activeFilters.add(name);
+        btn.classList.add('active');
+      }
+    }
+
+    // ── STATUS PILL ──────────────────────────────────────────────────────────
+    function setPill(cls, text) {
+      const pill = document.getElementById('status-pill');
+      pill.className = 'status-pill ' + cls;
+      document.getElementById('status-text').textContent = text;
+    }
+
+    // ── TOAST ────────────────────────────────────────────────────────────────
+    function toast(msg, type = 'inf') {
+      const wrap = document.getElementById('toast-wrap');
+      const el   = document.createElement('div');
+      el.className = `toast ${type}`;
+      el.textContent = msg;
+      wrap.appendChild(el);
+      setTimeout(() => el.remove(), 3500);
+    }
+
+    // ── EXPORT ───────────────────────────────────────────────────────────────
+    function exportLog() {
+      const data = JSON.stringify(state.events, null, 2);
+      const blob = new Blob([data], { type: 'application/json' });
+      const url  = URL.createObjectURL(blob);
+      const a    = Object.assign(document.createElement('a'), {
+        href: url, download: `gojo-log-${Date.now()}.json`
+      });
+      a.click();
+      URL.revokeObjectURL(url);
+      toast('Log exported', 'ok');
     }
 
     function clearViewer() {
-      const viewer = document.getElementById('code-viewer');
-      viewer.innerHTML = `<div class="empty-state" id="empty-state">
-        <h3>Cleared</h3>
-        <p>Ready for the next action.</p>
-      </div>`;
+      const wrap = document.getElementById('viewer-wrap');
+      const es   = document.getElementById('empty-state');
+      Array.from(wrap.children).forEach(c => { if (c !== es) c.remove(); });
+      es.style.display = '';
+      document.getElementById('tab-name').textContent = 'telemetry.log';
     }
 
-    function copyCode(btn) {
-      const code = btn.closest('div').nextElementSibling?.dataset?.raw || '';
-      navigator.clipboard.writeText(code).then(() => {
-        btn.textContent = 'Copied!';
-        btn.classList.add('copied');
-        setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
-      });
-    }
+    // ── MOBILE PANELS ────────────────────────────────────────────────────────
+    function showMobilePanel(panel) {
+      const sidebar    = document.getElementById('sidebar');
+      const mainPanel  = document.getElementById('main-panel');
+      const rightPanel = document.getElementById('right-panel');
 
-    // ── TRANSCRIPT ─────────────────────────────────────────────────────────
-    const addTranscript = (role, text) => {
-      const overlay = document.getElementById('transcript-overlay');
-      const bubble = document.createElement('div');
-      bubble.className = `t-bubble ${role}`;
-      bubble.innerHTML = `<span class="t-meta">${role === 'user' ? 'Caller' : 'InsForge Control'}</span>${text}`;
-      overlay.appendChild(bubble);
-      if (overlay.children.length > 3) overlay.removeChild(overlay.firstChild);
-      setTimeout(() => {
-        if (overlay.contains(bubble)) {
-          bubble.style.transition = 'opacity 0.8s ease';
-          bubble.style.opacity = '0';
-          setTimeout(() => { if (overlay.contains(bubble)) overlay.removeChild(bubble); }, 800);
-        }
-      }, 6000);
-    };
+      sidebar.classList.remove('mobile-active');
+      rightPanel.classList.remove('mobile-active');
 
-    // ── TOAST ──────────────────────────────────────────────────────────────
-    function toast(msg, type = '') {
-      const stack = document.getElementById('toast-stack');
-      const t = document.createElement('div');
-      t.className = `toast ${type}`;
-      t.textContent = msg;
-      stack.appendChild(t);
-      setTimeout(() => { t.style.opacity='0'; t.style.transition='opacity 0.4s'; setTimeout(()=>t.remove(),400); }, 3000);
-    }
-
-    // ── EVENT HANDLER ─────────────────────────────────────────────────────
-    const pendingCards = {};
-
-    function handleEvent(e) {
-      allEvents.push({ ...e, _ts: Date.now() });
-
-      switch (e.type) {
-        case "error":
-          if (timerInterval) clearInterval(timerInterval);
-          setStatus("ended");
-          document.getElementById('status-text').textContent = "Connection Error";
-          toast("SSE connection error: " + e.message, 'error');
-          break;
-
-        case "call_started":
-          callStartTime = Date.now();
-          actionCount = 0;
-          streamEvents = [];
-          setStatus("active");
-          document.getElementById('val-sid').textContent = (e.callSid||'').substring(0,8)+'…';
-          document.getElementById('val-caller').textContent = e.callerPhone || '—';
-          document.getElementById('val-actions').textContent = '0';
-          if (timerInterval) clearInterval(timerInterval);
-          timerInterval = setInterval(updateTimer, 1000);
-          renderCode("-- InsForge Control online.\n-- Postgres · Edge Functions · Realtime · AI Gateway all active.\n-- Awaiting voice commands...", "sql", "session.log", null);
-          toast("Call connected");
-          break;
-
-        case "transcript":
-          addTranscript(e.role, e.text);
-          break;
-
-        case "action_proposed": {
-          const domId = `prop-${e.action}-${Date.now()}`;
-          pendingCards[e.action] = domId;
-          const lang = (e.action === 'run_sql' || e.action === 'add_index') ? 'sql'
-                      : (e.action === 'analyze_with_ai') ? 'sql'
-                      : 'typescript';
-          addStreamEvent({
-            domId, action: e.action, sponsor: e.sponsor,
-            state: 'exec', timeLabel: 'running…',
-            body: JSON.stringify(e.params||{}).substring(0,60),
-            diff: e.diff, lang
-          });
-          document.getElementById('thinking-indicator').classList.add('visible');
-          renderCode(e.diff || JSON.stringify(e.params, null, 2), lang, `${e.action}.diff`, e.sponsor);
-          break;
-        }
-
-        case "action_executing":
-          // Keep thinking indicator visible; card already created by action_proposed
-          document.getElementById('thinking-indicator').classList.add('visible');
-          break;
-
-        case "action_done": {
-          actionCount++;
-          document.getElementById('val-actions').textContent = actionCount;
-          document.getElementById('thinking-indicator').classList.remove('visible');
-
-          const domId = pendingCards[e.action];
-          if (domId) {
-            const existing = streamEvents.find(s => s.domId === domId);
-            if (existing) {
-              existing.state = e.success ? 'done' : 'fail';
-              existing.timeLabel = e.durationMs ? `${e.durationMs}ms` : 'done';
-              // Prefer the real diff from the tool; fall back to result JSON
-              if (e.diff) {
-                existing.diff = e.diff;
-                existing.lang = existing.lang;
-              } else if (e.result) {
-                try {
-                  existing.diff = JSON.stringify(JSON.parse(e.result), null, 2);
-                  existing.lang = 'json';
-                } catch {}
-              }
-              renderStream();
-            }
-            delete pendingCards[e.action];
-          }
-
-          // Show real diff in code viewer on success
-          const viewerContent = e.diff || (e.result ? (() => { try { return JSON.stringify(JSON.parse(e.result), null, 2); } catch { return e.result; } })() : null);
-          const viewerLang = e.diff ? ((e.action==='run_sql'||e.action==='add_index') ? 'sql' : e.action==='analyze_with_ai' ? 'sql' : 'typescript') : 'json';
-          if (viewerContent && e.success) renderCode(viewerContent, viewerLang, `${e.action}.result`, e.sponsor);
-          break;
-        }
-
-        case "sms_sent":
-          toast(`SMS sent → ${e.to}`, 'success');
-          addStreamEvent({
-            domId: `sms-${Date.now()}`, action: 'send_sms', sponsor: 'Twilio · SMS',
-            state: 'done', timeLabel: 'sent',
-            body: `→ ${e.to}`,
-            diff: `-- Twilio SMS\nTO: ${e.to}\nSID: ${e.messageSid}`, lang: 'sql'
-          });
-          break;
-
-        case "coding_agent_started":
-          toast(`Replicas agent spawned: ${e.agentId}`);
-          addStreamEvent({
-            domId: `agent-${e.agentId}`, action: 'spawn_coding_agent', sponsor: 'Replicas · Coding Agent',
-            state: 'exec', timeLabel: 'running…',
-            body: e.task?.substring(0,60),
-            diff: `// Replicas Agent: ${e.agentId}\n// Task: ${e.task}`, lang: 'typescript'
-          });
-          break;
-
-        case "coding_agent_done": {
-          const domId = `agent-${e.agentId}`;
-          const existing = streamEvents.find(s => s.domId === domId);
-          if (existing) {
-            existing.state = 'done'; existing.timeLabel = 'complete';
-            existing.diff = e.diff; existing.lang = 'typescript';
-            renderStream();
-          }
-          renderCode(e.diff || `// Replicas agent ${e.agentId} completed.`, 'typescript', 'agent.diff', 'Replicas · Coding Agent');
-          toast(`Coding agent complete: ${e.filesChanged?.length||0} files`, 'success');
-          break;
-        }
-
-        case "ai_analysis_done":
-          addStreamEvent({
-            domId: `ai-${Date.now()}`, action: 'analyze_with_ai', sponsor: 'Gemini · AI Gateway',
-            state: 'done', timeLabel: 'done',
-            body: e.question?.substring(0,60),
-            diff: `-- Gemini Analysis\n-- Q: ${e.question}\n\n${e.analysis}`, lang: 'sql'
-          });
-          renderCode(`-- Gemini AI Analysis\n-- ${e.question}\n\n${e.analysis}`, 'sql', 'analysis.md', 'Gemini · AI Gateway');
-          break;
-
-        case "call_ended":
-          if (timerInterval) clearInterval(timerInterval);
-          setStatus("ended");
-          toast(`Call ended · ${e.actionCount} actions`);
-          break;
+      if (panel === 'trace') {
+        sidebar.classList.add('mobile-active');
+        mainPanel.style.display = 'none';
+      } else if (panel === 'transcript') {
+        rightPanel.classList.add('mobile-active');
+        mainPanel.style.display = 'none';
+      } else {
+        mainPanel.style.display = '';
       }
+
+      document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+      document.getElementById('nav-' + (panel === 'trace' ? 'trace' : panel === 'transcript' ? 'transcript' : 'viewer')).classList.add('active');
     }
 
-    // ── SSE ────────────────────────────────────────────────────────────────
-    function connect() {
-      const es = new EventSource(SSE_URL);
-      es.onopen = () => { splashSseReady = true; tryDismissSplash(); };
-      es.onmessage = (e) => {
-        // Mark ready on first message too (in case onopen doesn't fire)
-        if (!splashSseReady) { splashSseReady = true; tryDismissSplash(); }
-        try { handleEvent(JSON.parse(e.data)); } catch {}
+    // ── HELPERS ──────────────────────────────────────────────────────────────
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function toolEmoji(action) {
+      const map = {
+        run_sql: '🗄️', add_index: '⚡', deploy_edge_fn: '🚀',
+        get_logs: '📋', check_storage: '🪣', send_sms: '📱',
+        spawn_coding_agent: '🤖', analyze_with_ai: '🧠', send_slack: '💬',
       };
-      es.onerror = () => {
-        // Still dismiss splash on error — don't block forever
-        if (!splashSseReady) { splashSseReady = true; tryDismissSplash(); }
-        es.close(); setTimeout(connect, 3000);
-      };
-    }
-    connect();
-
-    // ── EXPORT LOG ────────────────────────────────────────────────────────
-    function exportLog() {
-      const blob = new Blob([JSON.stringify(allEvents, null, 2)], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `insforge-session-${Date.now()}.json`;
-      a.click();
-    }
-
-    // ── MANUAL ACTIONS (fire real API calls via proxy or simulate) ─────────
-    async function apiCall(action, params) {
-      try {
-        const r = await fetch('/api/manual', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action, params })
-        });
-        if (!r.ok) throw new Error(await r.text());
-        return await r.json();
-      } catch (err) {
-        // Fallback: fire demo events so the UI still works without the API endpoint
-        simulateAction(action, params);
-      }
-    }
-
-    function runSqlManual() {
-      const sql = document.getElementById('sql-input').value.trim();
-      if (!sql) return toast('Enter a SQL query first', 'error');
-      simulateAction('run_sql', { sql }, 'InsForge · Postgres');
-    }
-
-    function addIndexManual() {
-      const table = document.getElementById('idx-table').value.trim();
-      const col   = document.getElementById('idx-col').value.trim();
-      if (!table || !col) return toast('Enter table and column', 'error');
-      simulateAction('add_index', { table, column: col }, 'InsForge · Postgres');
-    }
-
-    function sendSmsManual() {
-      const to   = document.getElementById('sms-to').value.trim();
-      const body = document.getElementById('sms-body').value.trim();
-      if (!to || !body) return toast('Enter phone number and message', 'error');
-      simulateAction('send_sms', { to, message: body }, 'Twilio · SMS');
-    }
-
-    function spawnAgentManual() {
-      const task = document.getElementById('agent-task').value.trim();
-      if (!task) return toast('Enter a task for the coding agent', 'error');
-      simulateAction('spawn_coding_agent', { task }, 'Replicas · Coding Agent');
-    }
-
-    function analyzeManual() {
-      const question = document.getElementById('ai-question').value.trim();
-      const data     = document.getElementById('ai-data').value.trim();
-      if (!question) return toast('Enter a question to analyze', 'error');
-      simulateAction('analyze_with_ai', { question, data }, 'Gemini · AI Gateway');
-    }
-
-    // ── SIMULATE (client-side demo events) ────────────────────────────────
-    function simulateAction(action, params, sponsor) {
-      const fake = `demo-${Date.now()}`;
-      const lang = (action==='run_sql'||action==='add_index') ? 'sql'
-                 : action==='analyze_with_ai' ? 'sql' : 'typescript';
-
-      const diffMap = {
-        run_sql: `-- SQL Query\n${params.sql}\n\n-- Result: (live result from InsForge Postgres)`,
-        add_index: `CREATE INDEX IF NOT EXISTS idx_${params.table}_${params.column}\n  ON ${params.table}(${params.column});`,
-        deploy_edge_fn: `// Edge Function: ${params.slug}\nexport default async function handler(req) {\n  return new Response(JSON.stringify({ ok: true }));\n}`,
-        get_logs: `-- Recent logs from insforge.logs\n[INFO]  2026-06-06T10:00:00Z  realtime: subscribed voice-ops\n[INFO]  2026-06-06T10:00:01Z  db: query ok (2ms)\n[WARN]  2026-06-06T10:00:05Z  fn: cold start 340ms`,
-        check_storage: `-- InsForge Storage Buckets\n[\n  { "name": "voice-recordings", "public": false, "size": "1.2 GB" },\n  { "name": "exports", "public": true, "size": "340 KB" }\n]`,
-        send_sms: `-- Twilio SMS\nTO:   ${params.to||'+1XXXXXXXXXX'}\nFROM: +19255155725\n\n${params.message||'InsForge summary ready.'}`,
-        spawn_coding_agent: `// Replicas AI Coding Agent\n// Task: ${params.task}\n\n// Generated migration:\nexport async function up(db) {\n  await db.query(\`\n    INSERT INTO archive_calls\n    SELECT * FROM voice_calls\n    WHERE ended_at < NOW() - INTERVAL '30 days';\n    DELETE FROM voice_calls\n    WHERE ended_at < NOW() - INTERVAL '30 days';\n  \`);\n}`,
-        analyze_with_ai: `-- Gemini AI Analysis\n-- Q: ${params.question||'Analyze this data'}\n\n1. KEY FINDING: Query latency p99 is 2.3× above baseline.\n2. ANOMALY: 3 calls with duration_s = 0 (likely failed connections).\n3. RECOMMENDATION: Add composite index on (started_at, status) to speed up dashboard queries.\n   Run: CREATE INDEX idx_calls_started_status ON voice_calls(started_at, status);`,
-      };
-
-      const resultMap = {
-        run_sql: [{ call_sid: 'CA1234', started_at: '2026-06-06T10:00:00Z', status: 'completed' }],
-        add_index: { indexName: `idx_${params.table}_${params.column}`, status: 'created' },
-        send_sms: { messageSid: 'SM' + Math.random().toString(36).slice(2,18), status: 'queued' },
-        spawn_coding_agent: { agentId: 'rep_' + Math.random().toString(36).slice(2,10), filesChanged: ['migrations/002_archive.ts'], status: 'completed' },
-        analyze_with_ai: { question: params.question, analysis: 'See diff panel.' },
-      };
-
-      handleEvent({ type: 'action_proposed', callSid: 'demo', action, params, diff: diffMap[action]||JSON.stringify(params,null,2), sponsor });
-      setTimeout(() => {
-        handleEvent({
-          type: 'action_done', callSid: 'demo', action,
-          result: JSON.stringify(resultMap[action]||{ status:'ok' }),
-          success: true, durationMs: 200 + Math.floor(Math.random()*400),
-          sponsor
-        });
-      }, 1200);
-    }
-
-    // ── DEMO SEQUENCE BUTTONS ─────────────────────────────────────────────
-    const demoScripts = {
-      show_calls: () => {
-        addTranscript('user', 'Show me the last five calls in the database');
-        setTimeout(() => addTranscript('agent', 'On it — give me a second.'), 800);
-        setTimeout(() => simulateAction('run_sql', { sql: 'SELECT call_sid, caller_phone, started_at, status, action_count\nFROM voice_calls\nORDER BY started_at DESC\nLIMIT 5' }, 'InsForge · Postgres'), 1200);
-      },
-      add_index: () => {
-        addTranscript('user', 'Add an index on voice_calls, column call_sid');
-        setTimeout(() => addTranscript('agent', 'Executing that now.'), 800);
-        setTimeout(() => simulateAction('add_index', { table: 'voice_calls', column: 'call_sid' }, 'InsForge · Postgres'), 1200);
-      },
-      deploy_fn: () => {
-        addTranscript('user', 'Deploy an analytics edge function');
-        setTimeout(() => addTranscript('agent', 'Deploying now.'), 800);
-        setTimeout(() => simulateAction('deploy_edge_fn', { slug: 'analytics', code: 'export default async function(req){\n  const url=new URL(req.url);\n  return Response.json({endpoint:"analytics",ts:Date.now()});\n}' }, 'InsForge · Edge Functions'), 1200);
-      },
-      get_logs: () => {
-        addTranscript('user', "What's in the InsForge logs — any errors?");
-        setTimeout(() => addTranscript('agent', "Checking the logs now."), 800);
-        setTimeout(() => simulateAction('get_logs', { source: 'insforge.logs' }, 'InsForge · Logs'), 1200);
-      },
-      analyze_ai: () => {
-        addTranscript('user', 'Analyze these query results for anomalies');
-        setTimeout(() => addTranscript('agent', "Running Gemini analysis on that."), 800);
-        setTimeout(() => simulateAction('analyze_with_ai', {
-          question: 'What anomalies exist in the call data?',
-          data: '[{"call_sid":"CA1","duration_s":0},{"call_sid":"CA2","duration_s":142},{"call_sid":"CA3","duration_s":0}]'
-        }, 'Gemini · AI Gateway'), 1200);
-      },
-      send_sms: () => {
-        addTranscript('user', 'Text me a summary of what just happened');
-        setTimeout(() => addTranscript('agent', "Sending you a Twilio SMS now."), 800);
-        setTimeout(() => simulateAction('send_sms', {
-          to: '+19255155725',
-          message: 'InsForge summary: 3 actions completed. Index added on voice_calls.call_sid. Edge fn analytics deployed. All systems nominal.'
-        }, 'Twilio · SMS'), 1200);
-      },
-      coding_agent: () => {
-        addTranscript('user', 'Write a migration for archiving old calls');
-        setTimeout(() => addTranscript('agent', "Spawning a Replicas coding agent for that."), 800);
-        setTimeout(() => simulateAction('spawn_coding_agent', {
-          task: 'Write a TypeScript migration that moves voice_calls older than 30 days into an archive_calls table.'
-        }, 'Replicas · Coding Agent'), 1200);
-      },
-    };
-
-    function fireDemo(key) {
-      if (!callStartTime) {
-        handleEvent({ type: 'call_started', callSid: 'CA_demo_' + Date.now(), callerPhone: '+1DEMO', timestamp: new Date().toISOString() });
-      }
-      demoScripts[key]?.();
-    }
-
-    // ── FULL DEMO SEQUENCE ─────────────────────────────────────────────────
-    function runDemoSequence() {
-      handleEvent({ type: 'call_started', callSid: 'CA_demo_' + Date.now(), callerPhone: '+14155550100', timestamp: new Date().toISOString() });
-      addTranscript('agent', 'InsForge Control online — Postgres, Edge Functions, Realtime, and AI all standing by. What do you need?');
-
-      const steps = [
-        [2000,  () => demoScripts.show_calls()],
-        [7000,  () => demoScripts.add_index()],
-        [13000, () => demoScripts.deploy_fn()],
-        [19000, () => demoScripts.get_logs()],
-        [25000, () => demoScripts.analyze_ai()],
-        [31000, () => demoScripts.send_sms()],
-        [37000, () => demoScripts.coding_agent()],
-        [45000, () => {
-          addTranscript('agent', 'All changes applied and logged. Anything else?');
-          setTimeout(() => {
-            addTranscript('user', "No, that's everything.");
-            setTimeout(() => {
-              addTranscript('agent', 'InsForge Control out.');
-              handleEvent({ type: 'call_ended', callSid: 'CA_demo', duration: 48, actionCount: 7 });
-            }, 2000);
-          }, 2000);
-        }],
-      ];
-
-      steps.forEach(([delay, fn]) => setTimeout(fn, delay));
+      return map[action] ?? '⚙️';
     }
   </script>
 </body>

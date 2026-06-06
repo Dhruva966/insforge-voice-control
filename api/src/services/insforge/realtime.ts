@@ -11,7 +11,8 @@ export type CallEvent =
   | { type: "sms_sent";              callSid: string; to: string; messageSid: string }
   | { type: "coding_agent_started";  callSid: string; agentId: string; task: string }
   | { type: "coding_agent_done";     callSid: string; agentId: string; diff: string; filesChanged: string[] }
-  | { type: "ai_analysis_done";      callSid: string; question: string; analysis: string };
+  | { type: "ai_analysis_done";      callSid: string; question: string; analysis: string }
+  | { type: "slack_sent";            callSid: string; message: string };
 
 const CHANNEL = "voice-ops";
 const EVENT_NAME = "call_event";

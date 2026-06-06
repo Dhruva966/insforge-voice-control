@@ -7,6 +7,7 @@ import bodyParser from "body-parser";
 import { config } from "./config";
 import { voiceRouter } from "./routes/voice";
 import { handleMediaStream } from "./routes/mediaStream";
+import { slackRouter } from "./routes/slack";
 
 const app = express();
 app.use(cors());
@@ -14,6 +15,7 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
 app.use("/voice", voiceRouter);
+app.use("/slack", slackRouter);
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
