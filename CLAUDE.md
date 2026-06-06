@@ -48,25 +48,39 @@ docs/       ← Research and deep docs (RESEARCH.md = source of truth)
 All verified API documentation, CLI syntax, and code patterns are in:
 **`docs/RESEARCH.md`** — Read this before writing any InsForge, Twilio, or Gemini code.
 
-## InsForge SDK — VERIFIED Patterns (Phase 1 complete)
+## InsForge SDK — VERIFIED Patterns (Phase 2 complete)
+
+**⚠️ REALTIME BUG: `@insforge/sdk` passes `ik_...` admin key as JWT `token` in socket auth.**
+**This causes "Invalid token" connection errors. DO NOT use `insforge.realtime` from the SDK.**
+**Use raw `socket.io-client` with `auth: { apiKey }` instead (verified working).**
 
 ```typescript
-// SDK init — VERIFIED: use createAdminClient for backend
+// Database — VERIFIED: insforge.database.from() (not .from() directly)
 import { createAdminClient } from "@insforge/sdk";
 const insforge = createAdminClient({ baseUrl: INSFORGE_URL, apiKey: INSFORGE_KEY });
-
-// Database — VERIFIED: insforge.database.from() (not .from() directly)
-const result = await insforge.database.from("calls").insert({...});
+const result = await insforge.database.from("voice_calls").insert([{...}]);
 if (result.error) throw new Error(result.error.message);
 
-// Realtime — VERIFIED: connect + subscribe BEFORE publish
-await insforge.realtime.connect();
-await insforge.realtime.subscribe("voice-ops");
-await insforge.realtime.publish("voice-ops", "call_event", payload);  // 3 args
+// Realtime — BROKEN in SDK. Use raw socket.io instead:
+import { io } from "socket.io-client";
+const socket = io(INSFORGE_URL, { transports: ["websocket"], auth: { apiKey: INSFORGE_KEY } });
+// Must subscribe BEFORE publish:
+socket.emit("realtime:subscribe", { channel: "voice-ops" }, (res) => { /* check res.ok */ });
+// Publish:
+socket.emit("realtime:publish", { channel: "voice-ops", event: "call_event", payload });
+// Receive:
+socket.on("call_event", (message) => { /* message includes .meta from server */ });
+
+// PREREQUISITE: voice-ops channel must exist on the project.
+// Create once via: POST /api/realtime/channels { pattern: "voice-ops", enabled: true }
+// Authorization: Bearer ik_...
 
 // ESM note: package.json has "type":"module" + "moduleResolution":"Bundler"
 // alawmulaw CJS workaround: use createRequire(import.meta.url)
 ```
+
+**Current InsForge project:** `cayxche9.us-east.insforge.app` (switched from `fy4p4tyq`)
+**DB tables:** `voice_calls` + `events` (created 2026-06-06, RLS enabled)
 
 ## Twilio Media Streams — Key Facts
 
