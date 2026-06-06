@@ -14,6 +14,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-diff.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js" defer></script>
 
   <style>
     :root {
@@ -696,6 +697,26 @@
       padding: 14px 13px; text-align: center; color: var(--text-3); font-size: 11px;
     }
 
+    .agents-empty-state {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 48px 20px; text-align: center; color: var(--text-3);
+      animation: item-in 0.3s ease-out both;
+    }
+    .agents-empty-icon {
+      font-size: 36px; margin-bottom: 14px; opacity: 0.6;
+      animation: float 3s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%,100% { transform: translateY(0); }
+      50%      { transform: translateY(-6px); }
+    }
+    .agents-empty-title { font-size: 14px; font-weight: 600; color: var(--text-2); margin-bottom: 6px; }
+    .agents-empty-sub { font-size: 12px; line-height: 1.6; max-width: 260px; }
+    .agents-empty-sub .voice-prompt {
+      color: rgba(167,139,250,0.9); font-style: italic;
+      background: rgba(124,58,237,0.08); border-radius: 4px; padding: 0 4px;
+    }
+
     .agent-card-foot {
       padding: 8px 13px; display: flex; align-items: center; gap: 6px;
       border-top: 1px solid var(--border-soft);
@@ -1137,6 +1158,11 @@
           <div class="routing-text" id="routing-text">Sonnet routing transcript…</div>
         </div>
         <div class="agents-grid" id="agents-grid"></div>
+        <div class="agents-empty-state" id="agents-empty-state">
+          <div class="agents-empty-icon">🤖</div>
+          <div class="agents-empty-title">No agents running</div>
+          <div class="agents-empty-sub">Say <span class="voice-prompt">"spawn a Devin agent"</span> to start, or trigger an alert to auto-spawn one.</div>
+        </div>
       </div>
 
       <div class="viewer-wrap" id="viewer-wrap">
@@ -1280,7 +1306,7 @@
       setTimeout(() => {
         document.getElementById('splash').classList.add('out');
         connectSSE();
-      }, 3200);
+      }, 4800);
     })();
 
     // ── SSE CONNECTION ────────────────────────────────────────────────────────
@@ -1521,10 +1547,17 @@
 
       // Detect language from diff content
       let lang = 'diff';
-      if (ev.diff?.includes('SELECT') || ev.diff?.includes('CREATE INDEX')) lang = 'sql';
-      else if (ev.diff?.includes('//') || ev.diff?.includes('interface') || ev.diff?.includes('const ')) lang = 'typescript';
+      let diffContent = ev.diff ?? '';
+      const trimmed = diffContent.trim();
+      if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+        try { diffContent = JSON.stringify(JSON.parse(trimmed), null, 2); lang = 'json'; } catch {}
+      } else if (diffContent.includes('SELECT') || diffContent.includes('CREATE INDEX')) {
+        lang = 'sql';
+      } else if (diffContent.includes('//') || diffContent.includes('interface') || diffContent.includes('const ')) {
+        lang = 'typescript';
+      }
 
-      const diffHtml = escapeHtml(ev.diff ?? '');
+      const diffHtml = escapeHtml(diffContent);
       const durStr   = ev.durationMs ? `${ev.durationMs}ms` : '';
       const statusEl = ev.success === false
         ? `<span class="status-err">✗ failed</span>`
@@ -1802,9 +1835,21 @@
       if (updates.diff) {
         const diffEl = document.getElementById(`diff-${agentId}`);
         if (diffEl) {
-          const lang = updates.diff.includes('---') || updates.diff.startsWith('diff ') ? 'diff'
-                     : updates.diff.includes('SELECT') ? 'sql' : 'typescript';
-          diffEl.innerHTML = `<pre class="language-${lang}"><code class="language-${lang}">${escapeHtml(updates.diff)}</code></pre>`;
+          let lang, displayDiff = updates.diff;
+          const trimmed = updates.diff.trim();
+          if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+            try {
+              displayDiff = JSON.stringify(JSON.parse(trimmed), null, 2);
+              lang = 'json';
+            } catch { lang = 'diff'; }
+          } else if (updates.diff.includes('---') || updates.diff.startsWith('diff ')) {
+            lang = 'diff';
+          } else if (updates.diff.includes('SELECT') || updates.diff.includes('CREATE')) {
+            lang = 'sql';
+          } else {
+            lang = 'typescript';
+          }
+          diffEl.innerHTML = `<pre class="language-${lang}"><code class="language-${lang}">${escapeHtml(displayDiff)}</code></pre>`;
           if (window.Prism) Prism.highlightAllUnder(diffEl);
         }
       }
@@ -1831,6 +1876,8 @@
       const count = agents.size;
       badge.textContent = count;
       badge.style.display = count > 0 ? '' : 'none';
+      const emptyEl = document.getElementById('agents-empty-state');
+      if (emptyEl) emptyEl.style.display = count > 0 ? 'none' : '';
     }
 
     function updateAgentsTitle() {
