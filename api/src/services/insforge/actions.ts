@@ -190,11 +190,13 @@ async function spawnCodingAgent(task: string): Promise<ActionResult> {
   const apiKey = config.REPLICAS_API_KEY;
   if (!apiKey) throw new Error("REPLICAS_API_KEY not configured");
 
-  // Spawn agent
+  const spawnBody: Record<string, string> = { message: task, coding_agent: "claude" };
+  if (config.REPLICAS_ORG_ID) spawnBody.organization_id = config.REPLICAS_ORG_ID;
+
   const spawnRes = await fetch("https://api.tryreplicas.com/v1/replica", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ message: task, coding_agent: "claude" }),
+    body: JSON.stringify(spawnBody),
   });
 
   if (!spawnRes.ok) {
@@ -202,18 +204,25 @@ async function spawnCodingAgent(task: string): Promise<ActionResult> {
     throw new Error(`Replicas spawn error ${spawnRes.status}: ${text}`);
   }
 
-  const { id: agentId } = (await spawnRes.json()) as { id: string };
+  const spawnData = (await spawnRes.json()) as { id: string; url?: string };
+  const agentId = spawnData.id;
+  const agentUrl = spawnData.url ?? `https://app.tryreplicas.com/replicas/${agentId}`;
 
-  // Poll up to 20s (10 × 2s) — cap to avoid blocking the voice call
-  let agentResult: { diff?: string; filesChanged?: string[]; status?: string } = {};
+  // Notify Slack immediately — don't wait for completion
+  void notifySlackInternal(
+    `*:robot_face: Replicas agent spawned* (\`${agentId}\`)\nOrg: \`${config.REPLICAS_ORG_ID ?? "default"}\`\nTask: ${task}\n<${agentUrl}|View agent>`
+  );
+
+  // Poll up to 30s (10 × 3s) — cap to avoid blocking the voice call
+  let agentResult: { diff?: string; filesChanged?: string[]; status?: string; url?: string } = {};
   for (let i = 0; i < 10; i++) {
-    await new Promise((r) => setTimeout(r, 2000));
+    await new Promise((r) => setTimeout(r, 3000));
     const pollRes = await fetch(`https://api.tryreplicas.com/v1/replicas/${agentId}`, {
       headers: { Authorization: `Bearer ${apiKey}` },
     });
     if (!pollRes.ok) {
       console.error(`[replicas] poll ${i} status ${pollRes.status}`);
-      if (pollRes.status >= 400 && pollRes.status < 500) break; // permanent error, stop polling
+      if (pollRes.status >= 400 && pollRes.status < 500) break;
       continue;
     }
     const data = (await pollRes.json()) as typeof agentResult;
@@ -223,26 +232,65 @@ async function spawnCodingAgent(task: string): Promise<ActionResult> {
     }
   }
 
-  const diff = agentResult.diff ?? `// Replicas agent ${agentId} — task queued\n// Task: ${task}`;
+  const diff = agentResult.diff ?? `// Replicas agent ${agentId} — running\n// Task: ${task}\n// Track: ${agentUrl}`;
   const files = agentResult.filesChanged ?? [];
-
   const narration = await generateNarration(task, diff, files);
 
-  // Auto-notify Slack when coding agent completes
+  // Notify Slack on completion (if it finished within poll window)
   if (agentResult.status === "completed" || agentResult.diff) {
     const preview = diff.substring(0, 500);
-    await notifySlackInternal(
-      `*@gojo coding agent done* (${agentId})\nTask: ${task}\nFiles: ${files.join(", ") || "pending"}\n\`\`\`\n${preview}\n\`\`\``
+    void notifySlackInternal(
+      `*:white_check_mark: Replicas agent done* (\`${agentId}\`)\nTask: ${task}\nFiles: ${files.join(", ") || "none"}\n\`\`\`\n${preview}\n\`\`\``
     );
+  } else {
+    // Still running — post background completion in Slack when it finishes
+    void pollReplicasToCompletion(apiKey, agentId, task, agentUrl);
   }
 
   return {
     action: "spawn_coding_agent",
-    result: { agentId, filesChanged: files, status: agentResult.status ?? "queued" },
-    diff: `// Replicas Coding Agent — ${agentId}\n// Task: ${task}\n// Files: ${files.join(", ") || "pending"}\n\n${diff}`,
+    result: { agentId, agentUrl, filesChanged: files, status: agentResult.status ?? "running" },
+    diff: `// Replicas Coding Agent — ${agentId}\n// Org: ${config.REPLICAS_ORG_ID ?? "default"}\n// Task: ${task}\n// Track: ${agentUrl}\n\n${diff}`,
     sponsor: "Replicas · Coding Agent",
     narration,
   };
+}
+
+async function pollReplicasToCompletion(
+  apiKey: string,
+  agentId: string,
+  task: string,
+  agentUrl: string,
+  timeoutMs = 300_000
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  let delay = 5000;
+
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, delay));
+    delay = Math.min(delay * 1.5, 20_000);
+
+    try {
+      const res = await fetch(`https://api.tryreplicas.com/v1/replicas/${agentId}`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+      if (!res.ok) continue;
+
+      const data = (await res.json()) as { diff?: string; filesChanged?: string[]; status?: string };
+      if (data.status === "completed" || data.diff) {
+        const preview = (data.diff ?? "").substring(0, 500);
+        const files = data.filesChanged ?? [];
+        await notifySlackInternal(
+          `*:white_check_mark: Replicas agent done* (\`${agentId}\`)\nTask: ${task}\nFiles: ${files.join(", ") || "none"}\n<${agentUrl}|View>\n\`\`\`\n${preview}\n\`\`\``
+        );
+        return;
+      }
+    } catch (err) {
+      console.error(`[replicas] background poll error:`, err);
+    }
+  }
+
+  void notifySlackInternal(`*:hourglass: Replicas agent \`${agentId}\` still running after 5min*\nTask: ${task}\n<${agentUrl}|View>`);
 }
 
 async function sendSlack(message: string): Promise<ActionResult> {

@@ -17,6 +17,7 @@ const schema = z.object({
   INSFORGE_KEY: z.string().min(1),
 
   REPLICAS_API_KEY: z.string().optional(),
+  REPLICAS_ORG_ID: z.string().optional(),
 
   DEVIN_API_KEY: z.string().optional(),
   DEVIN_ORG_ID: z.string().optional(),   // from app.devin.ai Settings → API Keys → Org ID
