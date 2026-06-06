@@ -3,7 +3,7 @@ import { config } from "../../config";
 import { twilioToGemini, geminiToTwilio } from "./audioConverter";
 import { INSFORGE_TOOLS } from "./tools";
 import { INSFORGE_AGENT_SYSTEM } from "./systemPrompt";
-import { executeTool } from "../insforge/actions";
+import { executeTool, getSponsor } from "../insforge/actions";
 import { broadcastEvent } from "../insforge/realtime";
 
 export interface GeminiHandle {
@@ -80,24 +80,27 @@ export async function openGeminiSession(
             const { name, args, id } = call;
             const params = (args ?? {}) as Record<string, string>;
 
+            const sponsor = getSponsor(name ?? "");
+
             await broadcastEvent({
               type: "action_proposed",
               callSid,
               action: name ?? "",
               params,
               diff: JSON.stringify(params, null, 2),
+              sponsor,
             });
 
-            await broadcastEvent({ type: "action_executing", callSid, action: name ?? "" });
+            await broadcastEvent({ type: "action_executing", callSid, action: name ?? "", sponsor });
 
             const start = Date.now();
-            let result: unknown;
+            let actionResult: Awaited<ReturnType<typeof executeTool>> | null = null;
             let success = true;
             try {
-              result = await executeTool(name ?? "", params);
+              actionResult = await executeTool(name ?? "", params);
               actionCount++;
             } catch (err) {
-              result = { error: String(err) };
+              actionResult = { action: name ?? "", result: { error: String(err) }, diff: String(err), sponsor };
               success = false;
             }
             const durationMs = Date.now() - start;
@@ -106,15 +109,17 @@ export async function openGeminiSession(
               type: "action_done",
               callSid,
               action: name ?? "",
-              result: JSON.stringify(result),
+              result: JSON.stringify(actionResult.result),
               success,
               durationMs,
+              sponsor,
+              diff: actionResult.diff,
             });
 
             responses.push({
               id: id ?? "",
               name: name ?? "",
-              response: { output: result },
+              response: { output: actionResult.result },
             });
           }
 
@@ -127,7 +132,7 @@ export async function openGeminiSession(
   });
 
   liveSession.sendRealtimeInput({
-    text: "[Call connected. Say exactly: 'InsForge Control online. What do you need?']",
+    text: "[Call connected. Say exactly: 'InsForge Control online — Postgres, Edge Functions, Realtime, and AI all standing by. What do you need?']",
   });
 
   return {

@@ -92,15 +92,18 @@ The agent runs as a Gemini Live session with strict voice persona rules:
 - **Latency:** Gemini sends audio before the tool call completes — barge-in support via Twilio `clear` event
 - **Tool routing:** interprets natural language to one of 5 actions automatically
 
-### Available Tools
+### Available Tools (8 total, 5 sponsors)
 
-| Tool | Trigger phrases | What it does |
-|------|----------------|--------------|
-| `run_sql` | "show me...", "query...", "how many..." | Read-only SELECT on InsForge Postgres |
-| `add_index` | "add an index", "optimize...", "it's slow" | `CREATE INDEX IF NOT EXISTS` via CLI |
-| `deploy_edge_fn` | "deploy a function", "update the edge fn" | Writes TS to tmp file, deploys via CLI |
-| `get_logs` | "check logs", "any errors", "what happened" | Tails `insforge.logs` or `function.logs` |
-| `check_storage` | "show storage", "list buckets" | `npx @insforge/cli storage list` |
+| Tool | Sponsor | Trigger phrases | What it does |
+|------|---------|----------------|--------------|
+| `run_sql` | InsForge · Postgres | "show me...", "query...", "how many..." | Read-only SELECT on InsForge Postgres |
+| `add_index` | InsForge · Postgres | "add an index", "optimize...", "it's slow" | `CREATE INDEX IF NOT EXISTS` via CLI |
+| `deploy_edge_fn` | InsForge · Edge Functions | "deploy a function", "update the edge fn" | Writes TS to tmp file, deploys via CLI |
+| `get_logs` | InsForge · Logs | "check logs", "any errors", "what happened" | Tails `insforge.logs` or `function.logs` |
+| `check_storage` | InsForge · Storage | "show storage", "list buckets" | `npx @insforge/cli storage list` |
+| `send_sms` | Twilio · SMS | "text me", "send me a summary", "SMS" | Twilio REST API sends message to caller |
+| `spawn_coding_agent` | Replicas · Coding Agent | "write code", "create a migration", "fix this" | Spawns Replicas agent, polls for diff |
+| `analyze_with_ai` | Gemini · AI Gateway | "analyze this", "any anomalies", "summarize" | Gemini text API analyzes data and returns recommendations |
 
 ### Security Model
 
@@ -146,14 +149,17 @@ sequenceDiagram
 ### Event Schema
 
 ```typescript
-// All events share this base shape
 type CallEvent =
-  | { type: "call_started";    callSid: string; callerPhone: string; timestamp: string }
-  | { type: "transcript";      callSid: string; role: "agent"; text: string }
-  | { type: "action_proposed"; callSid: string; action: string; params: Record<string,string>; diff: string }
-  | { type: "action_executing";callSid: string; action: string }
-  | { type: "action_done";     callSid: string; action: string; result: string; success: boolean; durationMs: number }
-  | { type: "call_ended";      callSid: string; actionCount: number; duration: number }
+  | { type: "call_started";         callSid: string; callerPhone: string; timestamp: string }
+  | { type: "transcript";           callSid: string; role: "agent" | "user"; text: string; timestamp: string }
+  | { type: "action_proposed";      callSid: string; action: string; params: object; diff: string; sponsor?: string }
+  | { type: "action_executing";     callSid: string; action: string; sponsor?: string }
+  | { type: "action_done";          callSid: string; action: string; result: string; success: boolean; durationMs: number; sponsor?: string; diff?: string }
+  | { type: "call_ended";           callSid: string; actionCount: number; duration: number }
+  | { type: "sms_sent";             callSid: string; to: string; messageSid: string }
+  | { type: "coding_agent_started"; callSid: string; agentId: string; task: string }
+  | { type: "coding_agent_done";    callSid: string; agentId: string; diff: string; filesChanged: string[] }
+  | { type: "ai_analysis_done";     callSid: string; question: string; analysis: string }
 ```
 
 ---
@@ -377,27 +383,73 @@ The `vercel.json` is pre-configured: static files from `public/`, SSE function a
 
 ---
 
-## Demo Script
+## Demo Script (8 steps, all 5 sponsors)
 
-| Step | You say | Dashboard shows |
-|------|---------|----------------|
-| Call the number | *(dials)* | Status dot goes green: "Call active" |
-| Agent answers | — | "InsForge Control online. What do you need?" in transcript |
-| Query the DB | "Show me the last five calls" | SQL diff: `SELECT * FROM voice_calls ORDER BY started_at DESC LIMIT 5` + result rows |
-| Add an index | "Add an index on voice_calls, column call_sid" | `CREATE INDEX IF NOT EXISTS idx_voice_calls_call_sid` diff → ✓ in exec log |
-| Check logs | "What's in the InsForge logs" | Last 20 log lines in diff viewer |
-| Hang up | — | Status dot goes red: "Call ended — 3 actions" |
+| # | You say | Sponsor hit | Dashboard shows |
+|---|---------|-------------|----------------|
+| 1 | *(dials +1 925 515 5725)* | **Twilio** · Voice + Media Streams | Status dot pulses green; Twilio hands off bidirectional mulaw WebSocket to server |
+| 2 | Agent answers | **Gemini** · Live API | "InsForge Control online — Postgres, Edge Functions, Realtime, and AI all standing by." — real-time transcript bubble |
+| 3 | "Show me the last five calls" | **InsForge** · Postgres | SQL diff: `SELECT … FROM voice_calls ORDER BY started_at DESC LIMIT 5` → result rows |
+| 4 | "Add an index on voice_calls, column call_sid" | **InsForge** · Postgres | `CREATE INDEX IF NOT EXISTS idx_voice_calls_call_sid` diff → ✓ in exec log |
+| 5 | "Deploy an analytics edge function" | **InsForge** · Edge Functions | TypeScript function code diff → "deployed" badge |
+| 6 | "Analyze these results for anomalies" | **Gemini** · AI Gateway | Gemini text analysis of query results — p99 latency, anomalies, recommendations |
+| 7 | "Text me a summary" | **Twilio** · SMS | Twilio SMS diff (TO/FROM/SID/body) → SMS delivered to caller's phone |
+| 8 | "Write a migration for archiving old calls" | **Replicas** · Coding Agent | TypeScript migration diff generated by Replicas coding agent |
+| — | "No, that's all" | **Vercel** · SSE | "InsForge Control out." — call ended, all events persisted; Vercel SSE maintained for 300s |
+
+> **No call needed for demos** — use the interactive panel on the dashboard right sidebar to trigger any step independently.
 
 ---
 
-## Sponsors
+## Sponsor Coverage
 
-| | Sponsor | Contribution |
-|-|---------|-------------|
-| 🟣 | **InsForge** | Postgres database, Realtime event bus, Edge Functions — the actual infra being controlled |
-| 🔴 | **Twilio** | Inbound PSTN voice call, mulaw audio streaming via Media Streams WebSocket |
-| ⚫ | **Vercel** | Dashboard hosting, serverless SSE function with 300s connection support |
-| 🔵 | **Google Gemini** | Voice AI model with native function calling and bidirectional audio streaming |
+### InsForge — Maximum Platform Depth
+
+InsForge is not just a database — this project exercises every major feature:
+
+| InsForge Feature | How it's used |
+|-----------------|--------------|
+| **Postgres** | `run_sql` — voice-triggered SELECT queries on live schema |
+| **Postgres** | `add_index` — `CREATE INDEX IF NOT EXISTS` via `@insforge/cli db query` |
+| **Edge Functions** | `deploy_edge_fn` — Gemini writes TS code, CLI deploys it live |
+| **Storage** | `check_storage` — lists buckets; voice-accessible storage audit |
+| **Realtime** | `broadcastEvent()` — every action emits structured events to `voice-ops` channel |
+| **Realtime** | SSE relay in `web/api/events.ts` subscribes and streams to browser via `EventSource` |
+| **Admin SDK** | `createAdminClient()` with RLS bypass for backend writes |
+| **CLI** | `npx @insforge/cli` for all infra mutations — no direct Postgres connection |
+
+### Twilio — Beyond Basic Voice
+
+| Twilio Feature | How it's used |
+|---------------|--------------|
+| **Voice Inbound** | PSTN number +1 (925) 515-5725 with TwiML `<Connect><Stream>` |
+| **Media Streams** | Bidirectional WebSocket — mulaw 8kHz audio in real time |
+| **Signature Validation** | `twilioValidate.ts` middleware verifies every POST/voice webhook |
+| **SMS** | `send_sms` tool — Twilio REST API sends post-action summaries to the caller |
+
+### Google Gemini — Two Distinct API Surfaces
+
+| Gemini Feature | How it's used |
+|---------------|--------------|
+| **Live API** (`gemini-3.1-flash-live-preview`) | Bidirectional audio streaming, sub-second latency, native function calling |
+| **Text API** (`gemini-2.0-flash`) | `analyze_with_ai` — synchronous analysis of query results, log anomalies, and optimization recommendations |
+| **Transcription** | `inputTranscription` + `outputTranscription` configs for real-time transcript bubbles |
+| **Tool routing** | 8 `FunctionDeclaration`s — Gemini selects the right tool from natural language intent |
+
+### Vercel — Persistent SSE Infrastructure
+
+| Vercel Feature | How it's used |
+|---------------|--------------|
+| **Static Hosting** | `web/public/index.html` — zero-build SPA with CDN-only dependencies |
+| **Serverless Function** | `web/api/events.ts` — SSE relay with `maxDuration: 300` (not available on default 10s limit) |
+| **Node.js 22 runtime** | Latest LTS runtime for ESM-native serverless execution |
+
+### Replicas — AI Coding Agent on Demand
+
+| Replicas Feature | How it's used |
+|----------------|--------------|
+| **Coding Agent** | `spawn_coding_agent` — voice triggers a Replicas agent to generate TypeScript migrations, edge functions, and fix suggestions |
+| **Poll API** | Backend polls `/v1/replicas/{id}` until `status === "completed"`, then streams diff to dashboard |
 
 ---
 

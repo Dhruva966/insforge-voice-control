@@ -1,66 +1,64 @@
-import { createAdminClient } from "@insforge/sdk";
+import { io } from "socket.io-client";
 import type { IncomingMessage, ServerResponse } from "http";
 
 export default async function handler(
   req: IncomingMessage,
   res: ServerResponse
 ): Promise<void> {
-  // SSE headers
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache",
     Connection: "keep-alive",
+    "X-Accel-Buffering": "no",
   });
   res.flushHeaders();
 
-  let cleanedUp = false;
-  let heartbeat: ReturnType<typeof setInterval> | null = null;
-
-  try {
-    const baseUrl = process.env.INSFORGE_URL?.trim();
-    const apiKey = process.env.INSFORGE_KEY?.trim();
-    if (!baseUrl || !apiKey) {
-      throw new Error("Missing INSFORGE_URL or INSFORGE_KEY");
-    }
-
-    const insforge = createAdminClient({ baseUrl, apiKey });
-    await insforge.realtime.connect();
-    const response = await insforge.realtime.subscribe("voice-ops");
-    if (!response.ok) {
-      throw new Error(response.error?.message ?? "Realtime subscribe failed");
-    }
-
-    const onCallEvent = (data: unknown) => {
-      res.write(`data: ${JSON.stringify(data)}\n\n`);
-    };
-
-    const cleanup = () => {
-      if (cleanedUp) return;
-      cleanedUp = true;
-      if (heartbeat) clearInterval(heartbeat);
-      insforge.realtime.off("call_event", onCallEvent);
-      insforge.realtime.unsubscribe("voice-ops");
-      insforge.realtime.disconnect();
-      try {
-        res.end();
-      } catch {
-        // ignore double-end during disconnect races
-      }
-    };
-
-    insforge.realtime.on("call_event", onCallEvent);
-
-    // 25s heartbeat to keep SSE connection alive
-    heartbeat = setInterval(() => {
-      res.write(": heartbeat\n\n");
-    }, 25000);
-
-    // Cleanup on client disconnect
-    req.on("close", cleanup);
-  } catch (err) {
-    res.write(
-      `data: ${JSON.stringify({ type: "error", message: String(err) })}\n\n`
-    );
+  const baseUrl = process.env.INSFORGE_URL?.trim();
+  const apiKey = process.env.INSFORGE_KEY?.trim();
+  if (!baseUrl || !apiKey) {
+    res.write(`data: ${JSON.stringify({ type: "error", message: "Missing INSFORGE_URL or INSFORGE_KEY" })}\n\n`);
     res.end();
+    return;
   }
+
+  const socket = io(baseUrl, {
+    transports: ["websocket"],
+    auth: { apiKey },
+  });
+
+  let heartbeat: ReturnType<typeof setInterval> | null = null;
+  let cleanedUp = false;
+
+  const cleanup = () => {
+    if (cleanedUp) return;
+    cleanedUp = true;
+    if (heartbeat) clearInterval(heartbeat);
+    socket.disconnect();
+    try { res.end(); } catch { /* ignore */ }
+  };
+
+  socket.on("connect", () => {
+    socket.emit("realtime:subscribe", { channel: "voice-ops" }, (response: { ok: boolean; error?: { message: string } }) => {
+      if (!response.ok) {
+        res.write(`data: ${JSON.stringify({ type: "error", message: response.error?.message ?? "Subscribe failed" })}\n\n`);
+        cleanup();
+        return;
+      }
+
+      heartbeat = setInterval(() => {
+        res.write(": heartbeat\n\n");
+      }, 25000);
+    });
+  });
+
+  socket.on("call_event", (message: unknown) => {
+    if (!cleanedUp) res.write(`data: ${JSON.stringify(message)}\n\n`);
+  });
+
+  socket.on("connect_error", (err) => {
+    res.write(`data: ${JSON.stringify({ type: "error", message: err.message })}\n\n`);
+    cleanup();
+  });
+
+  req.on("close", cleanup);
 }

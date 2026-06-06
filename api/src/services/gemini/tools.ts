@@ -48,7 +48,8 @@ export const INSFORGE_TOOLS: FunctionDeclaration[] = [
       properties: {
         source: {
           type: Type.STRING,
-          description: "Log source to read: 'insforge.logs' or 'function.logs'",
+          description: "Log source to read",
+          enum: ["insforge.logs", "function.logs"],
         },
       },
       required: ["source"],
@@ -60,6 +61,41 @@ export const INSFORGE_TOOLS: FunctionDeclaration[] = [
     parameters: {
       type: Type.OBJECT,
       properties: {},
+    },
+  },
+  {
+    name: "send_sms",
+    description: "Send a Twilio SMS to the caller or any phone number — use to deliver summaries, alerts, or diffs after completing infra actions",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        to:      { type: Type.STRING, description: "Destination phone number in E.164 format, e.g. +14155551234" },
+        message: { type: Type.STRING, description: "Text message body (up to 1600 chars; Twilio handles multi-segment automatically)" },
+      },
+      required: ["to", "message"],
+    },
+  },
+  {
+    name: "spawn_coding_agent",
+    description: "Spawn a Replicas AI coding agent to write, refactor, or debug TypeScript/SQL code — use for migrations, edge function templates, or fix suggestions",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        task: { type: Type.STRING, description: "Plain-English description of the coding task" },
+      },
+      required: ["task"],
+    },
+  },
+  {
+    name: "analyze_with_ai",
+    description: "Use the Gemini AI model to analyze query results, log output, or any data — produces optimization recommendations, anomaly detection, or plain-English summaries",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        question: { type: Type.STRING, description: "What to analyze or what question to answer" },
+        data:     { type: Type.STRING, description: "The raw data, SQL results, or log lines to analyze" },
+      },
+      required: ["question", "data"],
     },
   },
 ];
