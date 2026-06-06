@@ -11,6 +11,7 @@ export default async function handler(
     "Cache-Control": "no-cache",
     Connection: "keep-alive",
   });
+  res.flushHeaders();
 
   let cleanedUp = false;
   let heartbeat: ReturnType<typeof setInterval> | null = null;
