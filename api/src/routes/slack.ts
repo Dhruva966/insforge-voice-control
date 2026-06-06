@@ -62,11 +62,18 @@ function parseGojoCommand(text: string): { tool: string; params: Record<string, 
 }
 
 async function postSlackResponse(url: string, text: string): Promise<void> {
-  await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ response_type: "in_channel", text }),
-  }).catch((err) => console.error("[slack] response_url error:", err));
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ response_type: "in_channel", text }),
+    });
+    if (!res.ok) {
+      console.error(`[slack] response_url returned HTTP ${res.status}`);
+    }
+  } catch (err) {
+    console.error("[slack] response_url network error:", (err as Error).message);
+  }
 }
 
 // POST /slack/command — receives Slack /gojo slash command

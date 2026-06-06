@@ -1,5 +1,5 @@
 import "dotenv/config";
-import express, { Request } from "express";
+import express, { Request, Response, NextFunction } from "express";
 import { createServer } from "http";
 import { WebSocketServer } from "ws";
 import cors from "cors";
@@ -15,6 +15,15 @@ import { eventsRouter } from "./routes/events";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WEB_DIR = path.resolve(__dirname, "../../web/public");
+
+process.on("unhandledRejection", (reason) => {
+  console.error("[server] unhandled rejection:", reason);
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("[server] uncaught exception:", err);
+  process.exit(1);
+});
 
 const app = express();
 app.use(cors());
@@ -36,6 +45,10 @@ app.get("/health", (_req, res) => res.json({ ok: true }));
 // Serve dashboard locally — avoids needing Vercel dev for the alert proxy
 app.use(express.static(WEB_DIR));
 
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+  console.error("[server] unhandled route error:", err);
+  res.status(500).json({ error: "Internal server error" });
+});
 const server = createServer(app);
 
 const wss = new WebSocketServer({ server, path: "/media-stream" });

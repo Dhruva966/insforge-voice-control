@@ -149,7 +149,11 @@ export async function openGeminiSession(
             });
           }
 
-          liveSession.sendToolResponse({ functionResponses: responses });
+          try {
+            liveSession.sendToolResponse({ functionResponses: responses });
+          } catch (err) {
+            console.error(`[${callSid}] sendToolResponse error:`, (err as Error).message);
+          }
         }
       },
       onerror: (err) => onError(err instanceof Error ? err : new Error(String(err))),
@@ -175,7 +179,11 @@ export async function openGeminiSession(
       });
     },
     close: () => {
-      try { liveSession.close(); } catch { /* ignore */ }
+      try {
+        liveSession.close();
+      } catch (err) {
+        console.warn(`[${callSid}] error closing Gemini session:`, (err as Error).message);
+      }
     },
     get actionCount() { return actionCount; },
   };

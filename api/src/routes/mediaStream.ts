@@ -36,7 +36,8 @@ export function handleMediaStream(ws: WebSocket): void {
     let frame: TwilioFrame;
     try {
       frame = JSON.parse(raw.toString());
-    } catch {
+    } catch (err) {
+      console.warn(`[media-stream] failed to parse WebSocket frame:`, (err as Error).message);
       return;
     }
 
@@ -94,7 +95,11 @@ export function handleMediaStream(ws: WebSocket): void {
 
     if (frame.event === "media" && frame.media) {
       if (gemini) {
-        gemini.sendAudio(frame.media.payload);
+        try {
+          gemini.sendAudio(frame.media.payload);
+        } catch (err) {
+          console.error(`[${callSid}] sendAudio error:`, (err as Error).message);
+        }
       } else {
         bufferedAudio.push(frame.media.payload);
       }
