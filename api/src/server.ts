@@ -14,7 +14,7 @@ import { alertRouter } from "./routes/alert";
 import { eventsRouter } from "./routes/events";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const WEB_DIR = path.resolve(__dirname, "../../../web/public");
+const WEB_DIR = path.resolve(__dirname, "../../web/public");
 
 const app = express();
 app.use(cors());
