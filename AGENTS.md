@@ -45,14 +45,28 @@ Gemini PCM16 24kHz → geminiToTwilio() → mulaw 8kHz → Twilio
 3. `media` — `frame.media.payload` (base64 mulaw)
 4. `stop` — finalize and close
 
-## InsForge Realtime
+## InsForge Realtime — CRITICAL: DO NOT use SDK realtime
+
+**Bug confirmed:** `@insforge/sdk` passes `ik_...` admin key as JWT `token` in socket auth.
+InsForge realtime server rejects non-JWTs with "Invalid token".
+
+Use raw `socket.io-client` instead:
 
 ```typescript
-// Backend publish (verify 3-arg signature at hackathon)
-insforge.realtime.publish("voice-ops", "call_event", eventPayload);
+import { io } from "socket.io-client";
+// Connect with apiKey (NOT token)
+const socket = io(INSFORGE_URL, { transports: ["websocket"], auth: { apiKey: INSFORGE_KEY } });
+// Subscribe first, then publish
+socket.emit("realtime:subscribe", { channel: "voice-ops" }, (res) => { /* check res.ok */ });
+socket.emit("realtime:publish", { channel: "voice-ops", event: "call_event", payload });
+// Receive
+socket.on("call_event", (message) => { /* message has your payload + .meta from server */ });
+```
 
-// Frontend receives these through the Vercel SSE relay at /api/events
-// which subscribes server-side, then forwards the payload to EventSource.
+**PREREQUISITE:** Create the `voice-ops` channel once per project:
+```bash
+curl -X POST -H "Authorization: Bearer $INSFORGE_KEY" -H "Content-Type: application/json" \
+  -d '{"pattern":"voice-ops","enabled":true}' $INSFORGE_URL/api/realtime/channels
 ```
 
 ## Env Vars Required

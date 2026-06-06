@@ -79,34 +79,60 @@ RLS is supported but configured differently.
 
 ## 2. InsForge Realtime
 
-### ✅ VERIFIED — Realtime API (Phase 1)
+### ❌ SDK BROKEN — DO NOT use `insforge.realtime` from `@insforge/sdk`
 
-InsForge Realtime uses **Socket.IO channels**, NOT Supabase channels.
+**Root cause (Phase 2 finding):** `createAdminClient` stores the `ik_...` key in `TokenManager`
+via `setAccessToken()`. The Realtime module reads it and passes it as `{ auth: { token: "ik_..." } }`
+to socket.io. InsForge realtime server expects `token` to be a JWT — rejects `ik_...` with "Invalid token".
+
+### ✅ VERIFIED — Raw socket.io pattern (Phase 2)
+
+InsForge Realtime uses Socket.IO under the hood. Admin clients use `auth: { apiKey }`.
 
 ```typescript
-// Backend: MUST connect + subscribe before publish
-await insforge.realtime.connect();
-await insforge.realtime.subscribe("voice-ops");   // ← required before publish
-// 3-arg publish confirmed:
-insforge.realtime.publish("voice-ops", "call_event", payload);
+import { io } from "socket.io-client";
 
-// Frontend / SSE relay: subscribe + listen
-await insforge.realtime.connect();
-await insforge.realtime.subscribe("voice-ops");
-// ⚠️ verify event name: "call_event" — must match what backend publishes
-insforge.realtime.on("call_event", (data) => { /* handle */ });
+// Admin clients: apiKey NOT token
+const socket = io(process.env.INSFORGE_URL, {
+  transports: ["websocket"],
+  auth: { apiKey: process.env.INSFORGE_KEY },
+});
+
+// Subscribe before publish
+socket.emit("realtime:subscribe", { channel: "voice-ops" }, (res: { ok: boolean; error?: { message: string } }) => {
+  if (!res.ok) throw new Error(res.error?.message ?? "Subscribe failed");
+});
+
+// Publish
+socket.emit("realtime:publish", {
+  channel: "voice-ops",
+  event: "call_event",
+  payload: { type: "call_started", callSid, ... },
+});
+
+// Receive — event name is the event field from publish
+socket.on("call_event", (message) => {
+  // message = { ...payload, meta: { channel, messageId, senderType, timestamp } }
+});
 ```
 
-### Verification test
+### PREREQUISITE: channel must exist
 
-Before hooking up the dashboard, broadcast a test event from the API:
+`REALTIME_UNAUTHORIZED` on subscribe = channel doesn't exist. Create it once:
+```bash
+curl -X POST \
+  -H "Authorization: Bearer $INSFORGE_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"pattern":"voice-ops","enabled":true}' \
+  $INSFORGE_URL/api/realtime/channels
+```
+
+### Verification test (Phase 2 confirmed working)
+
 ```typescript
-await insforge.realtime.connect();
-insforge.realtime.publish("voice-ops", "call_event", { type: "test", ts: Date.now() });
-// Then subscribe in a separate process and confirm receipt
+// Both pub and sub connect with apiKey, e2e message delivery confirmed
+// See api/test-e2e-raw.ts for the full working test
 ```
-
-Check InsForge project console → Realtime section for received events.
 
 ---
 
