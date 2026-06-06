@@ -12,7 +12,11 @@ export type CallEvent =
   | { type: "coding_agent_started";  callSid: string; agentId: string; task: string }
   | { type: "coding_agent_done";     callSid: string; agentId: string; diff: string; filesChanged: string[] }
   | { type: "ai_analysis_done";      callSid: string; question: string; analysis: string }
-  | { type: "slack_sent";            callSid: string; message: string };
+  | { type: "slack_sent";            callSid: string; message: string }
+  | { type: "devin_agent_started";   callSid: string; sessionId: string; sessionUrl: string; task: string }
+  | { type: "devin_agent_update";    callSid: string; sessionId: string; narration: string; routedFrom?: string }
+  | { type: "devin_agent_done";      callSid: string; sessionId: string; sessionUrl: string; narration: string; diff?: string; prUrl?: string }
+  | { type: "agent_routed";          callSid: string; sessionId: string; agentNum: number; instruction: string };
 
 const CHANNEL = "voice-ops";
 const EVENT_NAME = "call_event";

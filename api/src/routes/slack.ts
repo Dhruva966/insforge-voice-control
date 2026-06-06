@@ -1,8 +1,35 @@
 import { Router } from "express";
+import crypto from "crypto";
 import { executeTool } from "../services/insforge/actions.js";
 import { postSlackWebhook } from "../utils/slack.js";
+import { config } from "../config.js";
 
 const router = Router();
+
+function verifySlackRequest(
+  rawBody: string,
+  timestampHeader: string | undefined,
+  signatureHeader: string | undefined
+): boolean {
+  if (!config.SLACK_SIGNING_SECRET) return false;
+  if (!rawBody || !timestampHeader || !signatureHeader) return false;
+
+  const timestamp = Number(timestampHeader);
+  if (!Number.isFinite(timestamp)) return false;
+
+  const ageSeconds = Math.abs(Math.floor(Date.now() / 1000) - timestamp);
+  if (ageSeconds > 60 * 5) return false;
+
+  const base = `v0:${timestampHeader}:${rawBody}`;
+  const expected = `v0=${crypto.createHmac("sha256", config.SLACK_SIGNING_SECRET).update(base).digest("hex")}`;
+  const actual = signatureHeader.trim();
+
+  const expectedBuf = Buffer.from(expected);
+  const actualBuf = Buffer.from(actual);
+  if (expectedBuf.length !== actualBuf.length) return false;
+
+  return crypto.timingSafeEqual(expectedBuf, actualBuf);
+}
 
 function parseGojoCommand(text: string): { tool: string; params: Record<string, string> } | null {
   const lower = text.toLowerCase().trim();
@@ -41,6 +68,20 @@ async function postSlackResponse(url: string, text: string): Promise<void> {
 
 // POST /slack/command — receives Slack /gojo slash command
 router.post("/command", async (req, res) => {
+  const rawBody = (req as typeof req & { rawBody?: string }).rawBody ?? "";
+  const timestamp = req.header("x-slack-request-timestamp");
+  const signature = req.header("x-slack-signature");
+
+  if (!config.SLACK_SIGNING_SECRET) {
+    res.status(503).json({ error: "Slack signing secret is not configured" });
+    return;
+  }
+
+  if (!verifySlackRequest(rawBody, timestamp, signature)) {
+    res.status(401).json({ error: "Invalid Slack signature" });
+    return;
+  }
+
   const { text = "", response_url, user_name } = req.body as {
     text: string;
     response_url: string;

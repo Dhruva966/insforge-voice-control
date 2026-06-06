@@ -4,8 +4,10 @@ import { twilioToGemini, geminiToTwilio } from "./audioConverter";
 import { ai } from "./client";
 import { INSFORGE_TOOLS } from "./tools";
 import { INSFORGE_AGENT_SYSTEM } from "./systemPrompt";
-import { executeTool, getSponsor } from "../insforge/actions";
+import { executeTool, getSponsor, activeDevinSessions } from "../insforge/actions";
 import { broadcastEvent } from "../insforge/realtime";
+import { routeTranscript } from "../devin/router";
+import type { AlertContext } from "../alert/store";
 
 export interface GeminiHandle {
   sendAudio: (base64Mulaw: string) => void;
@@ -37,7 +39,8 @@ export async function openGeminiSession(
   callSid: string,
   onAudio: (base64Mulaw: string) => void,
   onError: (err: Error) => void,
-  onToolCallStart: () => void
+  onToolCallStart: () => void,
+  alertCtx?: AlertContext
 ): Promise<GeminiHandle> {
   let actionCount = 0;
 
@@ -69,7 +72,33 @@ export async function openGeminiSession(
           onAudio(geminiToTwilio(msg.data));
         }
 
-        broadcastTranscript(msg.serverContent?.inputTranscription, callSid, "user");
+        // User transcript — inline because Devin agent routing needs the text value
+        const userTranscript = msg.serverContent?.inputTranscription;
+        if (userTranscript?.finished && userTranscript.text?.trim()) {
+          const text = userTranscript.text.trim();
+          broadcastTranscript(userTranscript, callSid, "user");
+
+          // Route transcript to relevant Devin agents if any are running
+          const runningAgents = [...activeDevinSessions.entries()]
+            .filter(([, v]) => v.callSid === callSid)
+            .map(([sessionId, v]) => ({ sessionId, task: v.task, num: v.num, status: "running" }));
+
+          if (runningAgents.length > 0) {
+            void routeTranscript(text, runningAgents).then(async (decision) => {
+              if (!decision || decision.confidence !== "high") return;
+              const entry = activeDevinSessions.get(decision.sessionId);
+              if (!entry) return;
+              await broadcastEvent({
+                type: "agent_routed",
+                callSid,
+                sessionId: decision.sessionId,
+                agentNum: entry.num,
+                instruction: decision.instruction,
+              }).catch(() => { /* ignore */ });
+            }).catch(() => { /* non-critical */ });
+          }
+        }
+
         broadcastTranscript(msg.serverContent?.outputTranscription, callSid, "agent");
 
         if (msg.toolCall?.functionCalls?.length) {
@@ -131,9 +160,16 @@ export async function openGeminiSession(
     },
   });
 
-  liveSession.sendRealtimeInput({
-    text: "[Call connected. Say exactly: 'InsForge Control online — Postgres, Edge Functions, Realtime, and AI all standing by. What do you need?']",
-  });
+  if (alertCtx) {
+    // Alert call — Gojo called the engineer about a production error
+    liveSession.sendRealtimeInput({
+      text: `[ALERT CALL. You called this engineer about a production error. Introduce yourself briefly, then give ONE sentence summarizing the error. Do NOT read out the full stack trace or details unless the engineer asks. Say: "Hey, Gojo here — there's a ${alertCtx.errorType} in ${alertCtx.file}. Say 'details' for more, or 'fix it' to spawn an agent."]`,
+    });
+  } else {
+    liveSession.sendRealtimeInput({
+      text: "[Call connected. Say exactly: 'InsForge Control online — Postgres, Edge Functions, Realtime, and AI all standing by. What do you need?']",
+    });
+  }
 
   return {
     sendAudio: (base64Mulaw: string) => {

@@ -95,7 +95,7 @@ The agent runs as a Gemini Live session with strict voice persona rules:
 - **Latency:** Gemini sends audio before the tool call completes — barge-in support via Twilio `clear` event
 - **Tool routing:** interprets natural language to one of 5 actions automatically
 
-### Available Tools (8 total, 5 sponsors)
+### Available Tools (11 total, 6 sponsors)
 
 | Tool | Sponsor | Trigger phrases | What it does |
 |------|---------|----------------|--------------|
@@ -105,8 +105,49 @@ The agent runs as a Gemini Live session with strict voice persona rules:
 | `get_logs` | InsForge · Logs | "check logs", "any errors", "what happened" | Tails `insforge.logs` or `function.logs` |
 | `check_storage` | InsForge · Storage | "show storage", "list buckets" | `npx @insforge/cli storage list` |
 | `send_sms` | Twilio · SMS | "text me", "send me a summary", "SMS" | Twilio REST API sends message to caller |
-| `spawn_coding_agent` | Replicas · Coding Agent | "write code", "create a migration", "fix this" | Spawns Replicas agent, polls for diff |
+| `spawn_coding_agent` | Replicas · Coding Agent | "write code", "create a migration" | Spawns Replicas agent, polls for diff, auto-notifies Slack |
+| `spawn_devin_agent` | Devin · Cognition AI | "spawn a devin agent", "start an agent on the repo" | Launches Devin session on `gojo-mock-api`, streams status, opens PR |
+| `send_agent_message` | Devin · Cognition AI | "tell agent 2...", "refocus the agent" | Routes follow-up instruction to running Devin session |
 | `analyze_with_ai` | Gemini · AI Gateway | "analyze this", "any anomalies", "summarize" | Gemini text API analyzes data and returns recommendations |
+| `send_slack` | Slack · Webhooks | "notify slack", "ping the team", "post to slack" | Incoming Webhook POST; also auto-triggered after coding agents complete |
+
+### Slack Integration (`send_slack` + `/gojo` slash command)
+
+Gojo sends outgoing notifications to Slack via Incoming Webhooks, and accepts inbound commands via a Slack slash command:
+
+```
+POST /slack/command  ← Slack /gojo slash command target
+```
+
+Supported `/gojo` commands in Slack:
+```
+/gojo sql SELECT * FROM voice_calls LIMIT 5
+/gojo logs
+/gojo storage
+/gojo analyze <question>
+/gojo code <task description>
+/gojo sms +14155551234 <message>
+```
+
+**Setup:** In Slack App settings → Incoming Webhooks → add `SLACK_WEBHOOK_URL` to the repo-root `.env`. For the slash command, create a `/gojo` slash command pointing to `POST https://your-ngrok-url/slack/command`, and set `SLACK_SIGNING_SECRET` so the backend can verify Slack signatures before executing commands.
+
+Replicas coding agent results are **automatically pushed to Slack** as rich Block Kit messages with diff previews.
+
+### Multi-Agent Parallel View
+
+Calling "spawn a Devin agent" or "run 2 agents" spawns Devin sessions in parallel on the [`gojo-mock-api`](https://github.com/Dhruva966/gojo-mock-api) repo. The dashboard shows a **split-screen agent grid** that auto-adjusts:
+
+- 1 agent → full-width card
+- 2 agents → side by side
+- 3–4 agents → 2×2 grid
+
+Each card shows: task description, live Devin session link, AI-narrated summary, and diff on completion.
+
+**Sonnet Router:** As you speak, every voice transcript is asynchronously analyzed by Gemini Flash. If you address a specific agent's domain ("work on the auth middleware"), a routing decision is broadcast to the dashboard and shown in real time. This never blocks the voice pipeline — it runs via `void` promise.
+
+### Mock Repo Target
+
+[`Dhruva966/gojo-mock-api`](https://github.com/Dhruva966/gojo-mock-api) — a minimal Express + TypeScript REST API with users, posts, auth, and Postgres. Devin agents work on this repo during demos.
 
 ### Security Model
 
@@ -115,6 +156,8 @@ run_sql       → SELECT-only guard + semicolon injection block
 add_index     → table/column validated against /^[a-zA-Z0-9_]+$/
 deploy_edge_fn → slug validated against /^[a-zA-Z0-9_-]+$/ + tmp file cleanup
 get_logs      → source validated against allowlist Set{"insforge.logs","function.logs"}
+Twilio voice  → signature required unless DISABLE_TWILIO_SIGNATURE_VALIDATION=true in non-production
+Slack command → HMAC signature + timestamp verified before tool execution
 all CLI calls → execFileSync (not execSync) — no shell injection surface
 ```
 
@@ -122,7 +165,7 @@ all CLI calls → execFileSync (not execSync) — no shell injection surface
 
 ## Realtime Event Flow
 
-Every action the agent takes emits structured events to the InsForge Realtime `voice-ops` channel. The Vercel SSE function subscribes and forwards them to the browser as `text/event-stream`.
+The runtime emits structured events to the InsForge Realtime `voice-ops` channel. The Vercel SSE function subscribes and forwards live telemetry to the browser as `text/event-stream`. Call session rows are persisted in `voice_calls`; the `events` table exists for replay/audit work but is not yet populated for every streamed event.
 
 ```mermaid
 sequenceDiagram
@@ -225,7 +268,7 @@ CREATE TABLE voice_calls (
                CHECK (status IN ('active', 'completed', 'error'))
 );
 
--- Every realtime event persisted for replay / audit
+-- Reserved for replay / audit work alongside live realtime streaming
 CREATE TABLE events (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   call_id    UUID REFERENCES voice_calls(id) ON DELETE CASCADE,
@@ -300,14 +343,15 @@ insforge-voice-control/
 
 ```bash
 git clone https://github.com/Dhruva966/insforge-voice-control
-cd insforge-voice-control/api
+cd insforge-voice-control
+cd api
 npm install
 ```
 
 ### 2. Configure environment
 
 ```bash
-cp .env.example .env
+touch .env  # runtime reads the repo-root .env
 ```
 
 ```env
@@ -323,6 +367,10 @@ TWILIO_WEBHOOK_BASE=https://YOUR-NGROK.ngrok-free.app
 INSFORGE_URL=https://YOUR-PROJECT.us-east.insforge.app
 INSFORGE_KEY=ik_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
+SLACK_SIGNING_SECRET=optional_for_/slack/command
+SLACK_WEBHOOK_URL=optional_for_send_slack
+DISABLE_TWILIO_SIGNATURE_VALIDATION=false
+
 PORT=3000
 NODE_ENV=development
 ```
@@ -330,9 +378,12 @@ NODE_ENV=development
 ### 3. Apply database schema
 
 ```bash
-# Apply migrations directly (CLI looks for migrations/ at project root)
+# The InsForge CLI resolves migrations/ relative to the current working directory.
+# Run migration commands from /db so 001_init.sql is discovered.
 npx @insforge/cli link --api-base-url $INSFORGE_URL --api-key $INSFORGE_KEY
-npx @insforge/cli db query "$(cat db/migrations/001_init.sql)"
+cd db
+npx @insforge/cli db migrations up --all
+cd ..
 ```
 
 ### 4. Start the API server
@@ -398,7 +449,7 @@ The `vercel.json` is pre-configured: static files from `public/`, SSE function a
 | 6 | "Analyze these results for anomalies" | **Gemini** · AI Gateway | Gemini text analysis of query results — p99 latency, anomalies, recommendations |
 | 7 | "Text me a summary" | **Twilio** · SMS | Twilio SMS diff (TO/FROM/SID/body) → SMS delivered to caller's phone |
 | 8 | "Write a migration for archiving old calls" | **Replicas** · Coding Agent | TypeScript migration diff generated by Replicas coding agent |
-| — | "No, that's all" | **Vercel** · SSE | "InsForge Control out." — call ended, all events persisted; Vercel SSE maintained for 300s |
+| — | "No, that's all" | **Vercel** · SSE | "InsForge Control out." — call row finalized, live SSE maintained for 300s |
 
 > **No call needed for demos** — use the interactive panel on the dashboard right sidebar to trigger any step independently.
 

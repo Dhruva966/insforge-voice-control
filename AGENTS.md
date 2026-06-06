@@ -97,7 +97,7 @@ This project uses [InsForge](https://insforge.dev): an all-in-one, open-source P
   - `insforge-debug`: diagnosing failures (SDK/HTTP errors, RLS denials, auth and OAuth issues) and running security or performance audits.
   - `insforge-integrations`: wiring external auth providers (Clerk, Auth0, WorkOS, Better Auth, etc.) for JWT-based RLS, or the OKX x402 payment facilitator.
   - `find-skills`: discovering additional skills on demand.
-- **Credentials:** app code reads keys from `.env.local`; the CLI reads `.insforge/project.json`. Never hardcode or commit keys.
+- **Credentials:** app code reads keys from the repo-root `.env`; the CLI reads `.insforge/project.json`. Never hardcode or commit keys.
 
 Key patterns:
 

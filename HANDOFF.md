@@ -2,7 +2,7 @@
 
 ## Current Status
 
-**Phase:** Phase 1 complete. DB live. Ready for E2E test.
+**Phase:** Active integration and hardening pass. DB live. Re-run checks before assuming the branch is green.
 
 ## What's Done
 
@@ -14,7 +14,7 @@
 - [x] CLAUDE.md, AGENTS.md, DEPLOYMENT.md written
 - [x] InsForge SDK verified: `createAdminClient({ baseUrl, apiKey })` + `insforge.database.from()`
 - [x] ESM compatibility fixed: `"type": "module"` + `"moduleResolution": "Bundler"` + alawmulaw via createRequire
-- [x] `tsc --noEmit` passes clean
+- [ ] `tsc --noEmit` must be re-run after concurrent agent changes before commit
 - [x] Server boots: `[server] listening on :3000`
 - [x] CLI linked: `npx @insforge/cli link --api-base-url ... --api-key ...`
 - [x] Codex security review: 4 bugs fixed (execFileSync, semicolon SQL guard, source allowlist, DB error checking)
@@ -22,6 +22,9 @@
 - [x] DB tables created on InsForge: `voice_calls` + `events` (renamed from `calls` — conflict with prior cadence-schema project)
 - [x] RLS policies applied: `service_write_voice_calls`, `service_write_events`
 - [x] sessions.ts updated to use `voice_calls` table
+- [x] Slack slash commands now require `SLACK_SIGNING_SECRET`
+- [x] Twilio signature bypass is explicit (`DISABLE_TWILIO_SIGNATURE_VALIDATION`) instead of automatic in development
+- [x] `createSession()` is idempotent for duplicate `CallSid` retries; `completeSession()` now records `duration_s`
 
 ## What Needs to Be Done Next
 
