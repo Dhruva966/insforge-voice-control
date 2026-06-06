@@ -60,7 +60,8 @@ export async function openGeminiSession(
           disabled: false,
           startOfSpeechSensitivity: StartSensitivity.START_SENSITIVITY_LOW,
           endOfSpeechSensitivity: EndSensitivity.END_SENSITIVITY_LOW,
-          silenceDurationMs: 700,
+          prefixPaddingMs: 20,
+          silenceDurationMs: 250,
         },
       },
       inputAudioTranscription: {},
@@ -111,16 +112,17 @@ export async function openGeminiSession(
 
             const sponsor = getSponsor(name ?? "");
 
-            await broadcastEvent({
+            void broadcastEvent({
               type: "action_proposed",
               callSid,
               action: name ?? "",
               params,
               diff: JSON.stringify(params, null, 2),
               sponsor,
-            });
+            }).catch((err) => console.error(`[${callSid}] action_proposed broadcast error:`, err));
 
-            await broadcastEvent({ type: "action_executing", callSid, action: name ?? "", sponsor });
+            void broadcastEvent({ type: "action_executing", callSid, action: name ?? "", sponsor })
+              .catch((err) => console.error(`[${callSid}] action_executing broadcast error:`, err));
 
             const start = Date.now();
             let actionResult: Awaited<ReturnType<typeof executeTool>> | null = null;
@@ -134,7 +136,7 @@ export async function openGeminiSession(
             }
             const durationMs = Date.now() - start;
 
-            await broadcastEvent({
+            void broadcastEvent({
               type: "action_done",
               callSid,
               action: name ?? "",
@@ -143,7 +145,7 @@ export async function openGeminiSession(
               durationMs,
               sponsor,
               diff: actionResult.diff,
-            });
+            }).catch((err) => console.error(`[${callSid}] action_done broadcast error:`, err));
 
             responses.push({
               id: id ?? "",

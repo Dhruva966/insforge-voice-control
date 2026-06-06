@@ -1,7 +1,8 @@
-import { execFileSync } from "child_process";
+import { execFile } from "child_process";
 import { writeFileSync, unlinkSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
+import { promisify } from "util";
 import { config } from "../../config.js";
 import { twilioClient } from "../../utils/twilioClient.js";
 import { postSlackWebhook } from "../../utils/slack.js";
@@ -10,6 +11,7 @@ import { createDevinSession, pollDevinSession, sendDevinMessage } from "../devin
 import { broadcastEvent } from "./realtime.js";
 
 export type ActionResult = { result: unknown; diff: string; action: string; sponsor?: string; narration?: string; sessionId?: string; prUrl?: string };
+const execFileAsync = promisify(execFile);
 
 export async function executeTool(name: string, params: Record<string, string>): Promise<ActionResult> {
   switch (name) {
@@ -48,8 +50,13 @@ function parseJsonOrLines(raw: string): unknown {
   }
 }
 
-function cli(...args: string[]): string {
-  return execFileSync("npx", ["@insforge/cli", ...args], { encoding: "utf8", timeout: 15000 });
+async function cli(...args: string[]): Promise<string> {
+  const { stdout } = await execFileAsync("npx", ["@insforge/cli", ...args], {
+    encoding: "utf8",
+    timeout: 15000,
+    maxBuffer: 4 * 1024 * 1024,
+  });
+  return stdout;
 }
 
 // Active Devin sessions for routing (sessionId → callSid)
@@ -83,7 +90,7 @@ async function runSqlQuery(sql: string): Promise<ActionResult> {
     throw new Error("Security: multi-statement SQL is not allowed");
   }
 
-  const output = cli("db", "query", trimmed, "--json");
+  const output = await cli("db", "query", trimmed, "--json");
   const rows = parseJsonOrLines(output);
   const count = Array.isArray(rows) ? rows.length : "?";
   return {
@@ -99,7 +106,7 @@ async function addIndex(table: string, column: string): Promise<ActionResult> {
 
   const indexName = `idx_${table}_${column}`;
   const sql = `CREATE INDEX IF NOT EXISTS ${indexName} ON ${table}(${column});`;
-  cli("db", "query", sql);
+  await cli("db", "query", sql);
 
   return {
     action: "add_index",
@@ -115,9 +122,10 @@ async function deployEdgeFn(slug: string, code: string): Promise<ActionResult> {
   writeFileSync(tmpFile, code, "utf8");
 
   try {
-    execFileSync("npx", ["@insforge/cli", "functions", "deploy", slug, "--file", tmpFile], {
+    await execFileAsync("npx", ["@insforge/cli", "functions", "deploy", slug, "--file", tmpFile], {
       encoding: "utf8",
       timeout: 30000,
+      maxBuffer: 4 * 1024 * 1024,
     });
   } finally {
     try { unlinkSync(tmpFile); } catch { /* ignore */ }
@@ -136,7 +144,7 @@ async function getLogs(source: "insforge.logs" | "function.logs"): Promise<Actio
   if (!VALID_LOG_SOURCES.has(source)) {
     throw new Error(`Security: invalid log source: ${JSON.stringify(source)}`);
   }
-  const output = cli("logs", source, "--limit", "20", "--json");
+  const output = await cli("logs", source, "--limit", "20", "--json");
   const logs = parseJsonOrLines(output);
   return {
     action: "get_logs",
@@ -146,7 +154,7 @@ async function getLogs(source: "insforge.logs" | "function.logs"): Promise<Actio
 }
 
 async function checkStorage(): Promise<ActionResult> {
-  const output = cli("storage", "list", "--json");
+  const output = await cli("storage", "list", "--json");
   const buckets = parseJsonOrLines(output);
   return {
     action: "check_storage",

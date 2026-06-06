@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { twilioValidate } from "../middleware/twilioValidate";
 import { createSession } from "../services/insforge/sessions";
+import { issueStreamToken } from "../services/streamAuth";
 import { buildStreamTwiml, buildHangupTwiml } from "../utils/twiml";
 import { normalizePhone } from "../utils/phone";
 
@@ -12,7 +13,8 @@ voiceRouter.post("/", twilioValidate, async (req: Request, res: Response): Promi
 
   try {
     await createSession(CallSid, callerPhone);
-    res.type("text/xml").send(buildStreamTwiml());
+    const streamToken = issueStreamToken(CallSid);
+    res.type("text/xml").send(buildStreamTwiml({ callSid: CallSid, streamToken }));
   } catch (err) {
     console.error("[voice] error creating session:", err);
     res.type("text/xml").send(

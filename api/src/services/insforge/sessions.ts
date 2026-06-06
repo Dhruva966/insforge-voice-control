@@ -47,12 +47,12 @@ export async function createSession(callSid: string, callerPhone: string): Promi
     assertOk(result, "insert");
   }
 
-  await broadcastEvent({
+  void broadcastEvent({
     type: "call_started",
     callSid,
     callerPhone,
     timestamp: new Date().toISOString(),
-  });
+  }).catch((err) => console.error(`[${callSid}] call_started broadcast error:`, err));
 }
 
 export async function completeSession(callSid: string, actionCount: number): Promise<void> {
@@ -71,10 +71,10 @@ export async function completeSession(callSid: string, actionCount: number): Pro
   }).eq("call_sid", callSid) as DbResult;
   assertOk(result, "update");
 
-  await broadcastEvent({
+  void broadcastEvent({
     type: "call_ended",
     callSid,
     actionCount,
     duration: durationSeconds,
-  });
+  }).catch((err) => console.error(`[${callSid}] call_ended broadcast error:`, err));
 }
