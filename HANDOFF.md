@@ -43,7 +43,7 @@ ngrok http 3000
 
 6. Test realtime: watch InsForge console → Realtime tab for `voice-ops` channel events
 
-7. Dashboard: open web/public/index.html locally, point SSE at `http://localhost:3000/api/events`
+7. Dashboard: run `cd web && npm install && npx vercel dev --listen 3001`, then open `http://localhost:3001`
 
 8. Deploy web/ to Vercel when working
 
@@ -59,8 +59,7 @@ Fill these in `.env` before starting:
 ```
 TWILIO_WEBHOOK_BASE=https://YOUR-NGROK.ngrok.io
 INSFORGE_URL=https://YOUR-PROJECT.insforge.app
-INSFORGE_ANON_KEY=
-INSFORGE_SERVICE_KEY=
+INSFORGE_KEY=
 REPLICAS_API_KEY=
 ```
 

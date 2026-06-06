@@ -1,6 +1,4 @@
-// ⚠️ VERIFY at hackathon:
-//   1. InsForge SDK init: createClient vs new InsForge
-//   2. Realtime event name: "call_event" — must match what api/src/services/insforge/realtime.ts publishes
+import { createAdminClient } from "@insforge/sdk";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -10,53 +8,54 @@ export async function GET(req: Request): Promise<Response> {
 
   const stream = new ReadableStream({
     async start(controller) {
-      let insforge: {
-        realtime: {
-          connect: () => Promise<void>;
-          subscribe: (ch: string) => Promise<void>;
-          on: (event: string, handler: (data: unknown) => void) => void;
-        };
-      };
+      let cleanedUp = false;
+      let heartbeat: ReturnType<typeof setInterval> | null = null;
 
       try {
-        // ⚠️ verify init pattern at hackathon (createClient vs new InsForge)
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const sdk = require("@insforge/sdk") as Record<string, (...args: unknown[]) => unknown>;
-        if (sdk["createClient"]) {
-          insforge = sdk["createClient"]({
-            baseUrl: process.env.INSFORGE_URL,
-            anonKey: process.env.INSFORGE_ANON_KEY,
-          }) as typeof insforge;
-        } else {
-          const InsForge = sdk["InsForge"] as new (opts: { url: string; apiKey: string }) => typeof insforge;
-          insforge = new InsForge({
-            url: process.env.INSFORGE_URL ?? "",
-            apiKey: process.env.INSFORGE_ANON_KEY ?? "",
-          });
+        const baseUrl = process.env.INSFORGE_URL;
+        const apiKey = process.env.INSFORGE_KEY;
+        if (!baseUrl || !apiKey) {
+          throw new Error("Missing INSFORGE_URL or INSFORGE_KEY");
         }
 
+        const insforge = createAdminClient({ baseUrl, apiKey });
         await insforge.realtime.connect();
-        await insforge.realtime.subscribe("voice-ops");
+        const response = await insforge.realtime.subscribe("voice-ops");
+        if (!response.ok) {
+          throw new Error(response.error?.message ?? "Realtime subscribe failed");
+        }
 
-        // ⚠️ verify event name matches backend publish
-        insforge.realtime.on("call_event", (data: unknown) => {
+        const onCallEvent = (data: unknown) => {
           const msg = `data: ${JSON.stringify(data)}\n\n`;
           controller.enqueue(encoder.encode(msg));
-        });
+        };
+
+        const cleanup = () => {
+          if (cleanedUp) return;
+          cleanedUp = true;
+          if (heartbeat) clearInterval(heartbeat);
+          insforge.realtime.off("call_event", onCallEvent);
+          insforge.realtime.unsubscribe("voice-ops");
+          insforge.realtime.disconnect();
+          try {
+            controller.close();
+          } catch {
+            // ignore double-close during disconnect races
+          }
+        };
+
+        insforge.realtime.on("call_event", onCallEvent);
+        req.signal.addEventListener("abort", cleanup, { once: true });
+
+        // 25s heartbeat to keep SSE connection alive
+        heartbeat = setInterval(() => {
+          controller.enqueue(encoder.encode(": heartbeat\n\n"));
+        }, 25000);
       } catch (err) {
         console.error("[events] InsForge realtime init failed:", err);
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "error", message: String(err) })}\n\n`));
-      }
-
-      // 25s heartbeat to keep SSE connection alive
-      const hb = setInterval(() => {
-        controller.enqueue(encoder.encode(": heartbeat\n\n"));
-      }, 25000);
-
-      req.signal.addEventListener("abort", () => {
-        clearInterval(hb);
         controller.close();
-      });
+      }
     },
   });
 

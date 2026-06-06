@@ -20,9 +20,11 @@ TWILIO_WEBHOOK_BASE=https://xxxx.ngrok.io
 # console.twilio.com → Phone Numbers → +19255155725 → Voice → Webhook
 # Method: POST, URL: https://xxxx.ngrok.io/voice
 
-# 6. Open dashboard locally
-open web/public/index.html
-# Edit the EventSource URL in index.html to point to http://localhost:3000/api/events
+# 6. Run dashboard locally
+cd web
+npm install
+npx vercel dev --listen 3001
+# Open http://localhost:3001
 ```
 
 ## InsForge Setup
@@ -48,19 +50,18 @@ npm i -g vercel
 vercel login
 
 cd web/
+npm install
+vercel link
 # Add env vars
 vercel env add INSFORGE_URL
-vercel env add INSFORGE_ANON_KEY
+vercel env add INSFORGE_KEY
 
 # Deploy
 vercel --prod
 # Output: https://xxxx.vercel.app
 ```
 
-After Vercel deploy, update the EventSource URL in `web/public/index.html`:
-```javascript
-const evtSource = new EventSource("https://xxxx.vercel.app/api/events");
-```
+After Vercel deploy, the dashboard can keep using `const SSE_URL = "/api/events"` as-is.
 
 ## Environment Variables
 
@@ -78,8 +79,7 @@ TWILIO_PHONE_NUMBER=+19255155725
 TWILIO_WEBHOOK_BASE=                    # ngrok URL or production URL
 
 INSFORGE_URL=                           # npx @insforge/cli current
-INSFORGE_ANON_KEY=                      # InsForge project settings
-INSFORGE_SERVICE_KEY=                   # InsForge project settings (admin)
+INSFORGE_KEY=                           # InsForge project settings / linked project key
 
 REPLICAS_API_KEY=                       # app.tryreplicas.com → API Keys
 
@@ -91,7 +91,7 @@ PORT=3000
 
 ```
 INSFORGE_URL=      (same as above)
-INSFORGE_ANON_KEY= (same as above — public key, safe for Vercel)
+INSFORGE_KEY=  (same as above — server-side Vercel env only)
 ```
 
 ## Check TypeScript Before Committing

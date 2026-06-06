@@ -51,8 +51,8 @@ Gemini PCM16 24kHz → geminiToTwilio() → mulaw 8kHz → Twilio
 // Backend publish (verify 3-arg signature at hackathon)
 insforge.realtime.publish("voice-ops", "call_event", eventPayload);
 
-// Frontend subscribe (verify event name at hackathon)
-insforge.realtime.on("call_event", (data) => { ... });
+// Frontend receives these through the Vercel SSE relay at /api/events
+// which subscribes server-side, then forwards the payload to EventSource.
 ```
 
 ## Env Vars Required
@@ -60,7 +60,7 @@ insforge.realtime.on("call_event", (data) => { ... });
 ```
 GEMINI_API_KEY, GEMINI_MODEL, GEMINI_VOICE
 TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER, TWILIO_WEBHOOK_BASE
-INSFORGE_URL, INSFORGE_ANON_KEY, INSFORGE_SERVICE_KEY
+INSFORGE_URL, INSFORGE_KEY
 REPLICAS_API_KEY
 NODE_ENV, PORT
 ```

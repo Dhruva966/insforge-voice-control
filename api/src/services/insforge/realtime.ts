@@ -16,7 +16,10 @@ let initialized = false;
 async function ensureReady() {
   if (initialized) return;
   await insforge.realtime.connect();
-  await insforge.realtime.subscribe(CHANNEL);
+  const response = await insforge.realtime.subscribe(CHANNEL);
+  if (!response.ok) {
+    throw new Error(response.error?.message ?? `Failed to subscribe to ${CHANNEL}`);
+  }
   initialized = true;
 }
 
