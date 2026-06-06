@@ -2,49 +2,56 @@
 
 ## Current Status
 
-**Phase:** Scaffolding complete. Ready for Phase 1 implementation.
+**Phase:** Phase 1 complete. DB live. Ready for E2E test.
 
 ## What's Done
 
 - [x] Full directory structure created
 - [x] All markdown + config files generated
-- [x] All TypeScript source file skeletons generated
-- [x] Database migration written
+- [x] All TypeScript source files implemented (no ⚠️ VERIFY stubs remaining)
+- [x] Database migration written (001_init.sql — includes caller_phone column)
 - [x] docs/RESEARCH.md populated with all verified API docs
 - [x] CLAUDE.md, AGENTS.md, DEPLOYMENT.md written
-- [x] Plan reviewed by Codex (14 P1 issues found and fixed)
+- [x] InsForge SDK verified: `createAdminClient({ baseUrl, apiKey })` + `insforge.database.from()`
+- [x] ESM compatibility fixed: `"type": "module"` + `"moduleResolution": "Bundler"` + alawmulaw via createRequire
+- [x] `tsc --noEmit` passes clean
+- [x] Server boots: `[server] listening on :3000`
+- [x] CLI linked: `npx @insforge/cli link --api-base-url ... --api-key ...`
+- [x] Codex security review: 4 bugs fixed (execFileSync, semicolon SQL guard, source allowlist, DB error checking)
+- [x] insert([{}]) array shape fixed (InsForge SDK requirement)
+- [x] DB tables created on InsForge: `voice_calls` + `events` (renamed from `calls` — conflict with prior cadence-schema project)
+- [x] RLS policies applied: `service_write_voice_calls`, `service_write_events`
+- [x] sessions.ts updated to use `voice_calls` table
 
-## What Needs to Be Done in Phase 1
+## What Needs to Be Done Next
 
-### Hour 0 — InsForge SDK Discovery (FIRST THING)
+### Next Steps
 
-Before writing any InsForge code, run:
+1. Start server + ngrok in separate terminals:
 ```bash
-cd api && npm install
-node -e "const m=require('@insforge/sdk'); console.log(Object.keys(m))"
+# Terminal 1
+cd api && npm run dev
+
+# Terminal 2 (if ngrok needs new URL)
+ngrok http 3000
+# Then update TWILIO_WEBHOOK_BASE in .env
 ```
 
-Then update `api/src/services/insforge/client.ts` with the correct init pattern.
-Do NOT proceed to sessions.ts or realtime.ts until client.ts is verified working.
+4. Configure Twilio: go to Twilio console → Phone Numbers → +19255155725 → Voice → Webhook → POST → `https://YOUR-NGROK.ngrok.io/voice`
 
-### Implementation order
+5. Call +19255155725 → should hear "InsForge Control online. What do you need?"
 
-1. `api/src/services/insforge/client.ts` — verify SDK init, update both patterns
-2. `api/src/services/insforge/sessions.ts` — test insert + read a call session
-3. `api/src/services/insforge/realtime.ts` — broadcast a test event, verify in console
-4. `api/src/services/insforge/actions.ts` — wire 5 tool implementations
-5. `api/src/services/gemini/liveSession.ts` — wire Gemini + tool dispatch
-6. E2E test: `npm run dev` → call Twilio → hear agent → see events in InsForge console
-7. `web/public/index.html` — dashboard, point SSE at localhost
-8. E2E test with dashboard: call → dashboard updates
-9. Deploy web/ to Vercel
-10. (Stretch) `api/src/services/replicas/agent.ts`
+6. Test realtime: watch InsForge console → Realtime tab for `voice-ops` channel events
+
+7. Dashboard: open web/public/index.html locally, point SSE at `http://localhost:3000/api/events`
+
+8. Deploy web/ to Vercel when working
 
 ## Key Risks
 
-1. **InsForge SDK init pattern** — marked with ⚠️ VERIFY in client.ts
-2. **InsForge Realtime event name** — marked with ⚠️ VERIFY in realtime.ts
-3. **Replicas endpoint** — `/v1/replica` vs `/v1/replicas` — check docs first
+1. **Realtime channel name** — "voice-ops" in realtime.ts must match what web/api/events.ts subscribes to; verify in InsForge console after first call
+3. **Twilio ngrok URL** — current URL in .env may expire; regenerate if needed
+4. **Replicas endpoint** — `/v1/replica` vs `/v1/replicas` — check docs before implementing (stretch goal)
 
 ## Env Vars Still Needed
 

@@ -30,50 +30,37 @@ Last updated: 2026-06-06.
 npm install @insforge/sdk
 ```
 
-### ⚠️ CRITICAL — Verify init pattern at hackathon start
-
-InsForge SDK API surface was NOT fully verifiable pre-hackathon. At hackathon start:
+### ✅ VERIFIED — SDK init pattern (Phase 1)
 
 ```bash
-cd api && npm install
-node -e "const m=require('@insforge/sdk'); console.log(Object.keys(m))"
-```
+# SDK exports confirmed (v1.3.1):
+# createClient, createAdminClient, InsForgeClient, AI, Auth, Database,
+# Emails, Functions, HttpClient, InsForgeError, Logger, Payments,
+# Realtime, Storage, StorageBucket, TokenManager, default
 
-If output includes `createClient` → use Pattern B.
-If output includes `InsForge` → use Pattern A.
-
-**Pattern A (constructor):**
-```typescript
-import { InsForge } from "@insforge/sdk";
-const insforge = new InsForge({
-  url: process.env.INSFORGE_URL!,
-  apiKey: process.env.INSFORGE_SERVICE_KEY!,
+# Backend uses createAdminClient:
+import { createAdminClient } from "@insforge/sdk";
+const insforge = createAdminClient({
+  baseUrl: process.env.INSFORGE_URL!,   // https://fy4p4tyq.us-east.insforge.app
+  apiKey: process.env.INSFORGE_KEY!,    // ik_03... (project key)
 });
 ```
 
-**Pattern B (factory function — Codex flagged as more likely correct):**
+**DO NOT** use `createClient` for the backend — that's the browser/anon client.
+`createAdminClient` bypasses RLS and uses the admin/service key.
+
+### ✅ VERIFIED — Database API (Phase 1)
+
 ```typescript
-import { createClient } from "@insforge/sdk";
-const insforge = createClient({
-  baseUrl: process.env.INSFORGE_URL!,
-  anonKey: process.env.INSFORGE_SERVICE_KEY!,
-});
-```
-
-### ⚠️ Database API — verify namespace
-
-Two possible shapes:
-```typescript
-// Shape A:
-insforge.from("calls").insert({...})
-insforge.from("calls").select("*").eq("call_sid", id)
-
-// Shape B (Codex flagged as possible):
+// Shape B is correct: insforge.database.from("table")
 insforge.database.from("calls").insert({...})
 insforge.database.from("calls").select("*").eq("call_sid", id)
-```
+insforge.database.from("calls").update({...}).eq("call_sid", id)
 
-Test immediately: `await insforge.from("calls").select("*").limit(1)` — if errors, try `insforge.database.from`.
+// Returns { data, error } — always check error before proceeding
+const result = await insforge.database.from("calls").insert({...});
+if (result.error) throw new Error(result.error.message);
+```
 
 ### Environment Variables
 
@@ -93,14 +80,15 @@ RLS is supported but configured differently.
 
 ## 2. InsForge Realtime
 
-### ⚠️ CRITICAL — verify before wiring dashboard
+### ✅ VERIFIED — Realtime API (Phase 1)
 
 InsForge Realtime uses **Socket.IO channels**, NOT Supabase channels.
 
 ```typescript
-// Backend: connect + broadcast
+// Backend: MUST connect + subscribe before publish
 await insforge.realtime.connect();
-// ⚠️ verify signature: 3 args (channel, eventName, payload) or 2 args (channel, payload)
+await insforge.realtime.subscribe("voice-ops");   // ← required before publish
+// 3-arg publish confirmed:
 insforge.realtime.publish("voice-ops", "call_event", payload);
 
 // Frontend / SSE relay: subscribe + listen

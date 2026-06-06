@@ -1,6 +1,10 @@
-// Copied exactly from dry-cleaning reference — verified working
-// https://github.com/gandhiaayush/dry-cleaning-voice-agent
-import { mulaw } from "alawmulaw";
+import { createRequire } from "module";
+
+const require = createRequire(import.meta.url);
+// alawmulaw is CJS/UMD — use createRequire for ESM compat
+const { mulaw } = require("alawmulaw") as {
+  mulaw: { encode: (s: Int16Array) => Uint8Array; decode: (s: Uint8Array) => Int16Array };
+};
 
 function upsample(samples: Int16Array, fromRate: number, toRate: number): Int16Array {
   const ratio = toRate / fromRate;

@@ -1,6 +1,7 @@
 {
   "name": "insforge-voice-control-api",
   "version": "1.0.0",
+  "type": "module",
   "scripts": {
     "dev": "nodemon --exec tsx src/server.ts",
     "build": "tsc",

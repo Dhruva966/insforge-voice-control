@@ -48,24 +48,24 @@ docs/       ← Research and deep docs (RESEARCH.md = source of truth)
 All verified API documentation, CLI syntax, and code patterns are in:
 **`docs/RESEARCH.md`** — Read this before writing any InsForge, Twilio, or Gemini code.
 
-## InsForge SDK — Verified Patterns
-
-> ALWAYS verify against SDK README at hackathon start. Run:
-> `npm i @insforge/sdk && node -e "const m=require('@insforge/sdk');console.log(Object.keys(m))"`
+## InsForge SDK — VERIFIED Patterns (Phase 1 complete)
 
 ```typescript
-// SDK init (verify which pattern is correct):
-// Pattern A: import { InsForge } from "@insforge/sdk"; new InsForge({url, apiKey})
-// Pattern B: import { createClient } from "@insforge/sdk"; createClient({baseUrl, anonKey})
+// SDK init — VERIFIED: use createAdminClient for backend
+import { createAdminClient } from "@insforge/sdk";
+const insforge = createAdminClient({ baseUrl: INSFORGE_URL, apiKey: INSFORGE_KEY });
 
-// Database (verify namespace):
-// insforge.from("table")  OR  insforge.database.from("table")
+// Database — VERIFIED: insforge.database.from() (not .from() directly)
+const result = await insforge.database.from("calls").insert({...});
+if (result.error) throw new Error(result.error.message);
 
-// Realtime publish (verify args):
-// insforge.realtime.publish("channel", "eventName", payload)  // 3 args
+// Realtime — VERIFIED: connect + subscribe BEFORE publish
+await insforge.realtime.connect();
+await insforge.realtime.subscribe("voice-ops");
+await insforge.realtime.publish("voice-ops", "call_event", payload);  // 3 args
 
-// Realtime subscribe:
-// insforge.realtime.on("call_event", handler)  // verify event name
+// ESM note: package.json has "type":"module" + "moduleResolution":"Bundler"
+// alawmulaw CJS workaround: use createRequire(import.meta.url)
 ```
 
 ## Twilio Media Streams — Key Facts

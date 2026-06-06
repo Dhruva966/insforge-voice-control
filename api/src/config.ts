@@ -14,8 +14,7 @@ const schema = z.object({
   TWILIO_WEBHOOK_BASE: z.string().url(),
 
   INSFORGE_URL: z.string().url(),
-  INSFORGE_ANON_KEY: z.string().min(1),
-  INSFORGE_SERVICE_KEY: z.string().min(1),
+  INSFORGE_KEY: z.string().min(1),
 
   REPLICAS_API_KEY: z.string().optional(),
 

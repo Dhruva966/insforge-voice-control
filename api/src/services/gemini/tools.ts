@@ -1,3 +1,4 @@
+import { Type } from "@google/genai";
 import type { FunctionDeclaration } from "@google/genai";
 
 export const INSFORGE_TOOLS: FunctionDeclaration[] = [
@@ -5,10 +6,10 @@ export const INSFORGE_TOOLS: FunctionDeclaration[] = [
     name: "run_sql",
     description: "Execute a read-only SQL query on the InsForge Postgres database. SELECT only.",
     parameters: {
-      type: "object" as const,
+      type: Type.OBJECT,
       properties: {
         sql: {
-          type: "string" as const,
+          type: Type.STRING,
           description: "The SQL SELECT query to execute",
         },
       },
@@ -19,10 +20,10 @@ export const INSFORGE_TOOLS: FunctionDeclaration[] = [
     name: "add_index",
     description: "Add a database index to a table to improve query performance",
     parameters: {
-      type: "object" as const,
+      type: Type.OBJECT,
       properties: {
-        table: { type: "string" as const, description: "Table name" },
-        column: { type: "string" as const, description: "Column to index" },
+        table: { type: Type.STRING, description: "Table name" },
+        column: { type: Type.STRING, description: "Column to index" },
       },
       required: ["table", "column"],
     },
@@ -31,10 +32,10 @@ export const INSFORGE_TOOLS: FunctionDeclaration[] = [
     name: "deploy_edge_fn",
     description: "Deploy or update an InsForge edge function with TypeScript code",
     parameters: {
-      type: "object" as const,
+      type: Type.OBJECT,
       properties: {
-        slug: { type: "string" as const, description: "Function identifier/slug" },
-        code: { type: "string" as const, description: "TypeScript function code" },
+        slug: { type: Type.STRING, description: "Function identifier/slug" },
+        code: { type: Type.STRING, description: "TypeScript function code" },
       },
       required: ["slug", "code"],
     },
@@ -43,12 +44,11 @@ export const INSFORGE_TOOLS: FunctionDeclaration[] = [
     name: "get_logs",
     description: "Fetch recent logs from InsForge services",
     parameters: {
-      type: "object" as const,
+      type: Type.OBJECT,
       properties: {
         source: {
-          type: "string" as const,
-          enum: ["insforge.logs", "function.logs"],
-          description: "Log source to read",
+          type: Type.STRING,
+          description: "Log source to read: 'insforge.logs' or 'function.logs'",
         },
       },
       required: ["source"],
@@ -58,7 +58,7 @@ export const INSFORGE_TOOLS: FunctionDeclaration[] = [
     name: "check_storage",
     description: "List InsForge storage buckets and recent files",
     parameters: {
-      type: "object" as const,
+      type: Type.OBJECT,
       properties: {},
     },
   },
