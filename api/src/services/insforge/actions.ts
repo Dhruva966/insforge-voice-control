@@ -44,18 +44,28 @@ function assertSlug(value: string, label: string): void {
 function parseJsonOrLines(raw: string): unknown {
   try {
     return JSON.parse(raw);
-  } catch {
+  } catch (err) {
+    console.warn(`[actions] CLI returned non-JSON output (${(err as Error).message}), falling back to line split`);
     return raw.trim().split("\n").slice(-20);
   }
 }
 
 async function cli(...args: string[]): Promise<string> {
-  const { stdout } = await execFileAsync("npx", ["@insforge/cli", ...args], {
-    encoding: "utf8",
-    timeout: 15000,
-    maxBuffer: 4 * 1024 * 1024,
-  });
-  return stdout;
+  try {
+    const { stdout } = await execFileAsync("npx", ["@insforge/cli", ...args], {
+      encoding: "utf8",
+      timeout: 15000,
+      maxBuffer: 4 * 1024 * 1024,
+    });
+    return stdout;
+  } catch (err: unknown) {
+    const execErr = err as { killed?: boolean; signal?: string; stderr?: string; message?: string };
+    if (execErr.killed || execErr.signal === "SIGTERM") {
+      throw new Error(`CLI timed out after 15s: insforge ${args.join(" ")}`);
+    }
+    const stderr = execErr.stderr?.trim();
+    throw new Error(`CLI failed (insforge ${args.join(" ")}): ${stderr || execErr.message || "unknown error"}`);
+  }
 }
 
 // Active Devin sessions for routing (sessionId → callSid)
@@ -126,8 +136,17 @@ async function deployEdgeFn(slug: string, code: string): Promise<ActionResult> {
       timeout: 30000,
       maxBuffer: 4 * 1024 * 1024,
     });
+  } catch (err: unknown) {
+    const execErr = err as { killed?: boolean; signal?: string; stderr?: string; message?: string };
+    if (execErr.killed || execErr.signal === "SIGTERM") {
+      throw new Error(`Edge function deploy timed out after 30s: ${slug}`);
+    }
+    const stderr = execErr.stderr?.trim();
+    throw new Error(`Edge function deploy failed (${slug}): ${stderr || execErr.message || "unknown error"}`);
   } finally {
-    try { unlinkSync(tmpFile); } catch { /* ignore */ }
+    try { unlinkSync(tmpFile); } catch (err) {
+      console.warn(`[actions] failed to clean up temp file ${tmpFile}:`, (err as Error).message);
+    }
   }
 
   return {
@@ -365,11 +384,18 @@ async function generateNarration(task: string, diff: string, _files: string[]): 
 async function notifySlackInternal(message: string): Promise<void> {
   const webhookUrl = config.SLACK_WEBHOOK_URL;
   if (!webhookUrl) return;
-  await fetch(webhookUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text: message }),
-  }).catch((err) => console.error("[slack] notify error:", err));
+  try {
+    const res = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: message }),
+    });
+    if (!res.ok) {
+      console.error(`[slack] internal notify failed with HTTP ${res.status}`);
+    }
+  } catch (err) {
+    console.error("[slack] internal notify network error:", (err as Error).message);
+  }
 }
 
 async function analyzeWithAI(question: string, data: string): Promise<ActionResult> {

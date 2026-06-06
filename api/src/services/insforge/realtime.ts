@@ -79,18 +79,13 @@ async function ensureReady(): Promise<void> {
 }
 
 export async function broadcastEvent(event: CallEvent): Promise<void> {
-  try {
-    await ensureReady();
-    if (!socket?.connected) {
-      console.error("[realtime] socket not connected after ensureReady");
-      return;
-    }
-    socket.emit("realtime:publish", {
-      channel: CHANNEL,
-      event: EVENT_NAME,
-      payload: event,
-    });
-  } catch (err) {
-    console.error("[realtime] broadcastEvent error:", err);
+  await ensureReady();
+  if (!socket?.connected) {
+    throw new Error(`[realtime] socket not connected after ensureReady (event: ${event.type})`);
   }
+  socket.emit("realtime:publish", {
+    channel: CHANNEL,
+    event: EVENT_NAME,
+    payload: event,
+  });
 }
