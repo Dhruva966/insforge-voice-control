@@ -2,10 +2,11 @@ import { execFile } from "child_process";
 import { writeFileSync, unlinkSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
-import twilio from "twilio";
-import { GoogleGenAI } from "@google/genai";
 import { promisify } from "util";
 import { config } from "../../config.js";
+import { twilioClient } from "../../utils/twilioClient.js";
+import { postSlackWebhook } from "../../utils/slack.js";
+import { ai } from "../gemini/client.js";
 import { createDevinSession, pollDevinSession, sendDevinMessage } from "../devin/client.js";
 import { broadcastEvent } from "./realtime.js";
 
@@ -171,7 +172,6 @@ async function sendSms(to: string, message: string): Promise<ActionResult> {
     throw new Error("Security: message too long (max 1600 chars)");
   }
 
-  const twilioClient = twilio(config.TWILIO_ACCOUNT_SID, config.TWILIO_AUTH_TOKEN);
   const msg = await twilioClient.messages.create({
     to,
     from: config.TWILIO_PHONE_NUMBER,
@@ -249,7 +249,7 @@ async function sendSlack(message: string): Promise<ActionResult> {
   const webhookUrl = config.SLACK_WEBHOOK_URL;
   if (!webhookUrl) throw new Error("SLACK_WEBHOOK_URL not configured");
 
-  const payload = {
+  await postSlackWebhook(webhookUrl, {
     text: `*Gojo Alert*\n${message}`,
     blocks: [
       {
@@ -260,14 +260,7 @@ async function sendSlack(message: string): Promise<ActionResult> {
         },
       },
     ],
-  };
-
-  const res = await fetch(webhookUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(`Slack webhook HTTP ${res.status}`);
 
   return {
     action: "send_slack",
@@ -353,7 +346,6 @@ async function sendAgentMessage(sessionId: string, message: string): Promise<Act
 
 async function generateNarration(task: string, diff: string, _files: string[]): Promise<string> {
   try {
-    const ai = new GoogleGenAI({ apiKey: config.GEMINI_API_KEY });
     const prompt = `In exactly one sentence (max 20 words), describe what this coding task does for a non-technical audience.\nTask: ${task}\nDiff preview: ${diff.substring(0, 300)}`;
     const res = await ai.models.generateContent({ model: "gemini-2.0-flash", contents: prompt });
     return res.text?.trim() ?? "";
@@ -365,16 +357,10 @@ async function generateNarration(task: string, diff: string, _files: string[]): 
 async function notifySlackInternal(message: string): Promise<void> {
   const webhookUrl = config.SLACK_WEBHOOK_URL;
   if (!webhookUrl) return;
-  await fetch(webhookUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text: message }),
-  }).catch((err) => console.error("[slack] notify error:", err));
+  await postSlackWebhook(webhookUrl, { text: message }, true);
 }
 
 async function analyzeWithAI(question: string, data: string): Promise<ActionResult> {
-  const ai = new GoogleGenAI({ apiKey: config.GEMINI_API_KEY });
-
   const prompt = `You are an expert infrastructure engineer. Analyze the following data and answer the question concisely.
 
 Question: ${question}
