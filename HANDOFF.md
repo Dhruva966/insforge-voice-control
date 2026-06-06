@@ -1,82 +1,128 @@
-# Handoff Notes — Insforge Voice Control
+# Handoff Notes — Gojo (InsForge Voice Control)
 
-## Current Status
+## Current Status (2026-06-06)
 
-**Phase:** Active integration and hardening pass. DB live. Re-run checks before assuming the branch is green.
+**Phase:** Demo-ready. All core flows working. Alert flow + Devin integration + Slack wired.
+
+---
 
 ## What's Done
 
-- [x] Full directory structure created
-- [x] All markdown + config files generated
-- [x] All TypeScript source files implemented (no ⚠️ VERIFY stubs remaining)
-- [x] Database migration written (001_init.sql — includes caller_phone column)
-- [x] docs/RESEARCH.md populated with all verified API docs
-- [x] CLAUDE.md, AGENTS.md, DEPLOYMENT.md written
-- [x] InsForge SDK verified: `createAdminClient({ baseUrl, apiKey })` + `insforge.database.from()`
-- [x] ESM compatibility fixed: `"type": "module"` + `"moduleResolution": "Bundler"` + alawmulaw via createRequire
-- [ ] `tsc --noEmit` must be re-run after concurrent agent changes before commit
-- [x] Server boots: `[server] listening on :3000`
-- [x] CLI linked: `npx @insforge/cli link --api-base-url ... --api-key ...`
-- [x] Codex security review: 4 bugs fixed (execFileSync, semicolon SQL guard, source allowlist, DB error checking)
-- [x] insert([{}]) array shape fixed (InsForge SDK requirement)
-- [x] DB tables created on InsForge: `voice_calls` + `events` (renamed from `calls` — conflict with prior cadence-schema project)
-- [x] RLS policies applied: `service_write_voice_calls`, `service_write_events`
-- [x] sessions.ts updated to use `voice_calls` table
-- [x] Slack slash commands now require `SLACK_SIGNING_SECRET`
-- [x] Twilio signature bypass is explicit (`DISABLE_TWILIO_SIGNATURE_VALIDATION`) instead of automatic in development
-- [x] `createSession()` is idempotent for duplicate `CallSid` retries; `completeSession()` now records `duration_s`
-- [x] Media streams carry custom parameters, and the backend validates a one-time stream token before opening Gemini
-- [x] Early Twilio audio is buffered until Gemini is ready
-- [x] Gemini turn detection tuned down to a 250ms silence window for faster handoff
-- [x] CLI-backed actions and telemetry publishes no longer block the voice turn loop
+### Infrastructure
+- [x] InsForge project: `cayxche9.us-east.insforge.app`
+- [x] DB tables: `voice_calls` + `events` with RLS enabled
+- [x] InsForge Realtime `voice-ops` channel created
+- [x] Vercel dashboard deployed + SSE relay wired
+- [x] ngrok running: `https://71f7-136-25-74-62.ngrok-free.app`
 
-## What Needs to Be Done Next
+### Voice Pipeline
+- [x] Twilio Media Streams → Gemini Live → InsForge tools → Realtime broadcast
+- [x] 11 tools across 6 sponsors (InsForge, Twilio, Gemini, Vercel, Replicas, Devin)
+- [x] Twilio signature validation (middleware/twilioValidate.ts)
+- [x] Stream token auth on `/media-stream` WebSocket
+- [x] Early audio buffering until Gemini ready
+- [x] 250ms silence window for faster turn detection
+- [x] Non-blocking async for CLI actions + realtime publish
 
-### Next Steps
+### Alert Flow (full end-to-end)
+- [x] Mock error button on dashboard → phone input modal → POST /api/alert/trigger
+- [x] Vercel proxy function (`web/api/alert/trigger.ts`) → Express alertRouter
+- [x] Express creates outbound Twilio call with alert context in TwiML `<Parameter>`
+- [x] mediaStream reads `alertId` → `consumeAlert()` → `openGeminiSession(alertCtx)`
+- [x] Terse alert greeting: "Hey, Gojo here — there's a [ErrorType] in [file]..."
+- [x] User says "fix it" → Gemini calls `spawn_devin_agent`
 
-1. Start server + ngrok in separate terminals:
+### Devin Integration
+- [x] Devin API v3 client (`api/src/services/devin/client.ts`)
+- [x] Transcript router (`api/src/services/devin/router.ts`) — Gemini Flash routes voice to Devin
+- [x] `DEVIN_ORG_ID` set: `org-61ec02a9a3ac437ba2e6f96165679f5d`
+- [x] Mock repo: `Dhruva966/gojo-mock-api` (Express+TS, users/posts CRUD, JWT, pg pool)
+
+### Dashboard (dark violet, Vercel-deployed)
+- [x] Gojo splash screen (4.8s + 0.9s fade) with orbiting sponsor logos
+- [x] 4-panel layout: left sidebar + main diff viewer + agents tab + right transcript
+- [x] Multi-agent grid: spawn animation, status rings, narration, Prism.js code highlight
+- [x] Gojo SVG logo in each agent card header (top-left) with side-to-side bob animation
+- [x] Click agent card → Devin detail modal (status, diff, session link, PR link)
+- [x] Agent tab empty state: Gojo SVG idle, no robot emoji
+- [x] JSON diff fallback: auto-detects JSON payload and pretty-prints with syntax highlight
+- [x] Alert modal: phone input → "Call me now" button (no emojis)
+- [x] Realtime SSE connection with auto-reconnect
+- [x] Call-ended banner: prominent red bar + duration + action count
+- [x] Summary tab: auto-shown on call end, stats + action list + agent cards
+- [x] Zero emojis anywhere on the site
+- [x] Lighter violet accent (#8b5cf6), grayish dark background (#0c0c14)
+- [x] Transcript accumulation fix: buffers chunks, emits on `finished:true`
+
+### Slack
+- [x] Incoming Webhook: raw `fetch()` + Block Kit JSON
+- [x] Slash command (`/gojo`): HMAC-SHA256 signature verification
+- [x] `SLACK_SIGNING_SECRET` required for slash commands
+
+### Code Quality
+- [x] `tsc --noEmit` passes clean (as of last commit)
+- [x] Codex security review: execFileSync, SQL guard, source allowlist, DB error checking
+- [x] ESM-compatible: `"type":"module"` + `alawmulaw` via `createRequire`
+
+---
+
+## Active Session State
+
+```
+ngrok URL:            https://71f7-136-25-74-62.ngrok-free.app   ← EPHEMERAL, changes on restart
+TWILIO_WEBHOOK_BASE:  https://71f7-136-25-74-62.ngrok-free.app   ← set in .env
+Twilio console:       webhook = https://71f7-136-25-74-62.ngrok-free.app/voice
+Vercel BACKEND_URL:   https://71f7-136-25-74-62.ngrok-free.app   ← set in Vercel env vars
+Express server:       running on :3000 (via npm run dev in api/)
+ngrok process:        running in background (started by Claude)
+```
+
+---
+
+## On Every Ngrok Restart
+
+ngrok URLs are ephemeral. Each restart requires updating 3 places:
+
 ```bash
-# Terminal 1
-cd api && npm run dev
-
-# Terminal 2 (if ngrok needs new URL)
+# 1. Start ngrok
 ngrok http 3000
-# Then update TWILIO_WEBHOOK_BASE in .env
+# → copy NEW_URL
+
+# 2. Update .env
+TWILIO_WEBHOOK_BASE=NEW_URL
+
+# 3. Update Twilio console
+# console.twilio.com → Phone Numbers → +19255155725 → Voice → Webhook = NEW_URL/voice
+
+# 4. Update Vercel env + redeploy
+# Vercel dashboard → Environment Variables → BACKEND_URL = NEW_URL
+cd web && npx vercel --prod
+
+# 5. Restart Express server (to pick up new .env)
+# Kill old: pkill -f "nodemon.*server.ts" && pkill -f "tsx.*server.ts"
+cd api && npm run dev
 ```
 
-4. Configure Twilio: go to Twilio console → Phone Numbers → +19255155725 → Voice → Webhook → POST → `https://YOUR-NGROK.ngrok.io/voice`
-
-5. Call +19255155725 → should hear "InsForge Control online. What do you need?"
-
-6. Test realtime: watch InsForge console → Realtime tab for `voice-ops` channel events
-
-7. Dashboard: run `cd web && npm install && npx vercel dev --listen 3001`, then open `http://localhost:3001`
-
-8. Deploy web/ to Vercel when working
-
-## Key Risks
-
-1. **Realtime channel name** — "voice-ops" in realtime.ts must match what web/api/events.ts subscribes to; verify in InsForge console after first call
-3. **Twilio ngrok URL** — current URL in .env may expire; regenerate if needed
-4. **Replicas endpoint** — `/v1/replica` vs `/v1/replicas` — check docs before implementing (stretch goal)
-
-## Env Vars Still Needed
-
-Fill these in `.env` before starting:
-```
-TWILIO_WEBHOOK_BASE=https://YOUR-NGROK.ngrok.io
-INSFORGE_URL=https://YOUR-PROJECT.insforge.app
-INSFORGE_KEY=
-REPLICAS_API_KEY=
+**Tip:** Deploy Express to Railway for a stable URL that doesn't change:
+```bash
+railway login && railway init && railway up
 ```
 
-## Reference Codebase
+---
 
-Working Twilio + Gemini implementation:
-`/tmp/dry-cleaning-deep/` (or clone: https://github.com/gandhiaayush/dry-cleaning-voice-agent)
+## Remaining Work
 
-Key files to reference:
-- `src/services/gemini/audioConverter.ts` — copy exactly
-- `src/services/gemini/liveSession.ts` — adapt for InsForge tools
-- `src/routes/mediaStream.ts` — adapt (remove Supabase, add InsForge)
-- `src/middleware/twilioValidate.ts` — copy exactly
+1. **(Optional)** Deploy Express to Railway/Render for stable non-ephemeral `BACKEND_URL`
+2. **(Optional)** `SLACK_WEBHOOK_URL` + `SLACK_SIGNING_SECRET` in `.env` for Slack features
+3. **(Optional)** Rotate Devin API key after hackathon (currently in .env)
+4. **(Verify)** Deploy updated `web/public/index.html` to Vercel: `cd web && npx vercel --prod`
+
+---
+
+## Key Technical Notes
+
+- **InsForge SDK realtime bug**: `@insforge/sdk` passes `ik_...` key as JWT → "Invalid token". Use raw `socket.io-client` with `auth: { apiKey }` everywhere. This is already fixed in `realtime.ts`.
+- **Server .env loading**: server reads `../.env` (repo root). Must restart server after `.env` changes — nodemon only watches `.ts`/`.json`, not `.env`.
+- **Multiple nodemon instances**: if port 3000 is already in use, kill all with `pkill -f "nodemon.*server.ts" && pkill -f "tsx.*server.ts"` before restarting.
+- **Dashboard local vs Vercel**: Express serves dashboard at `localhost:3000` directly (no Vercel needed for local). Alert button hits Express `/api/alert/trigger` natively. Only use Vercel URL for judges/remote access.
+- **Vercel function**: `web/api/alert/trigger.ts` proxies to `BACKEND_URL`. `web/api/events.ts` subscribes to InsForge Realtime and SSE-streams to browser. `maxDuration: 300` required in vercel.json.

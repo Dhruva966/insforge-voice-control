@@ -18,18 +18,18 @@
 
   <style>
     :root {
-      --bg:          #060612;
-      --surface:     #0d0d28;
-      --surface-2:   #111135;
-      --surface-3:   #181848;
-      --border:      rgba(99,102,241,0.18);
-      --border-soft: rgba(255,255,255,0.06);
-      --accent:      #6366f1;
-      --accent-2:    #818cf8;
-      --accent-glow: rgba(99,102,241,0.25);
-      --text:        rgba(255,255,255,0.92);
-      --text-2:      rgba(255,255,255,0.50);
-      --text-3:      rgba(255,255,255,0.28);
+      --bg:          #0c0c14;
+      --surface:     #121220;
+      --surface-2:   #161628;
+      --surface-3:   #1e1e38;
+      --border:      rgba(139,92,246,0.18);
+      --border-soft: rgba(255,255,255,0.07);
+      --accent:      #8b5cf6;
+      --accent-2:    #a78bfa;
+      --accent-glow: rgba(139,92,246,0.28);
+      --text:        rgba(255,255,255,0.95);
+      --text-2:      rgba(255,255,255,0.60);
+      --text-3:      rgba(255,255,255,0.32);
       --green:       #22c55e;
       --amber:       #f59e0b;
       --red:         #ef4444;
@@ -41,8 +41,8 @@
       --nav-h:       60px;
 
       /* Sponsor colours */
-      --insforge:      #6366f1;
-      --insforge-bg:   rgba(99,102,241,0.10);
+      --insforge:      #8b5cf6;
+      --insforge-bg:   rgba(139,92,246,0.10);
       --twilio:        #f22f46;
       --twilio-bg:     rgba(242,47,70,0.10);
       --gemini:        #4285f4;
@@ -916,6 +916,173 @@
     }
     .sl-icon { width: 26px; height: 26px; }
 
+    /* Gojo idle SVG (agents empty state) */
+    .gojo-idle-wrap {
+      width: 72px; height: 72px;
+      margin-bottom: 16px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .gojo-idle-svg { width: 100%; height: 100%; }
+
+    /* Gojo card logo (top-left of agent card) */
+    .gojo-card-logo {
+      width: 22px; height: 22px; flex-shrink: 0;
+      animation: gojo-bob 2.6s ease-in-out infinite;
+    }
+
+    /* Bob side-to-side */
+    @keyframes gojo-bob {
+      0%,100% { transform: rotate(-9deg); }
+      50%      { transform: rotate(9deg); }
+    }
+
+    /* Summary view */
+    #summary-view {
+      display: none; flex: 1; overflow-y: auto;
+      padding: 20px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(139,92,246,0.2) transparent;
+    }
+    #summary-view::-webkit-scrollbar { width: 5px; }
+    #summary-view::-webkit-scrollbar-thumb { background: rgba(139,92,246,0.2); border-radius: 4px; }
+    #summary-view.visible { display: flex; flex-direction: column; }
+
+    .summary-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+    .summary-title {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 18px; font-weight: 700; letter-spacing: -0.01em;
+      color: var(--text); flex: 1;
+    }
+    .summary-badge {
+      font-size: 10px; font-weight: 600; letter-spacing: 0.1em;
+      text-transform: uppercase; padding: 4px 10px; border-radius: 20px;
+    }
+    .summary-badge.end { background: rgba(239,68,68,0.08); color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
+    .summary-badge.ok  { background: rgba(34,197,94,0.10); color: var(--green); border: 1px solid rgba(34,197,94,0.2); }
+
+    .summary-stats {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;
+    }
+    .summary-stat {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 14px 16px; text-align: center;
+    }
+    .summary-stat-val {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 28px; font-weight: 700; color: var(--accent-2); line-height: 1;
+    }
+    .summary-stat-lbl {
+      font-size: 10px; color: var(--text-3); margin-top: 4px;
+      text-transform: uppercase; letter-spacing: 0.1em;
+    }
+
+    .summary-section-title {
+      font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--text-3); margin-bottom: 10px;
+    }
+
+    .summary-action-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px; }
+    .summary-action-row {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--surface); border: 1px solid var(--border-soft);
+      border-radius: var(--radius-sm); padding: 9px 12px;
+    }
+    .summary-action-abbr {
+      width: 28px; height: 28px; border-radius: 7px;
+      background: rgba(255,255,255,0.04);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9px; font-weight: 700; color: var(--text-3); flex-shrink: 0;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .summary-action-name { font-size: 12px; font-weight: 500; color: var(--text); flex: 1; }
+    .summary-action-status {
+      font-size: 10px; font-weight: 600;
+      padding: 2px 8px; border-radius: 10px;
+    }
+    .summary-action-status.ok  { background: rgba(34,197,94,0.1);  color: var(--green); }
+    .summary-action-status.err { background: rgba(239,68,68,0.1);  color: var(--red); }
+
+    .summary-agents-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+    .summary-agent-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 14px 16px;
+    }
+    .summary-agent-task { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+    .summary-agent-meta { font-size: 10px; color: var(--text-3); font-family: 'JetBrains Mono', monospace; }
+    .summary-agent-links { display: flex; gap: 6px; margin-top: 8px; }
+
+    /* Devin detail modal */
+    #devin-modal {
+      display: none; position: fixed; inset: 0; z-index: 9997;
+      background: rgba(0,0,0,0.78); backdrop-filter: blur(8px);
+      align-items: center; justify-content: center; padding: 20px;
+    }
+    #devin-modal.visible { display: flex; }
+    .devin-modal-box {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); max-width: 640px; width: 100%;
+      max-height: 88vh; display: flex; flex-direction: column;
+      box-shadow: 0 0 80px rgba(124,58,237,0.18);
+      animation: agent-spawn 0.3s ease-out both;
+    }
+    .devin-modal-head {
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid var(--border-soft);
+      display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+    }
+    .devin-modal-title { font-size: 14px; font-weight: 700; color: var(--text); flex: 1; }
+    .devin-modal-body { flex: 1; overflow-y: auto; }
+    .devin-modal-section {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border-soft);
+    }
+    .devin-modal-section:last-child { border-bottom: none; }
+    .devin-modal-section-title {
+      font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--text-3); margin-bottom: 10px;
+    }
+    .devin-modal-status-text {
+      font-size: 12px; color: var(--text-2); font-style: italic; line-height: 1.6;
+    }
+    .devin-modal-diff pre[class*="language-"] {
+      margin: 0; border-radius: var(--radius-sm); font-size: 11px;
+      background: #080818; max-height: 260px; overflow-y: auto;
+    }
+    .devin-modal-foot {
+      padding: 12px 20px;
+      border-top: 1px solid var(--border-soft);
+      display: flex; gap: 8px; flex-shrink: 0; align-items: center;
+    }
+
+    /* Call-ended banner */
+    .call-ended-banner {
+      display: none;
+      padding: 9px 20px;
+      background: rgba(239,68,68,0.07);
+      border-bottom: 1px solid rgba(239,68,68,0.18);
+      flex-shrink: 0; align-items: center; gap: 10px;
+    }
+    .call-ended-banner.visible { display: flex; }
+    .call-ended-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--red); flex-shrink: 0;
+    }
+    .call-ended-banner-text {
+      font-size: 12px; font-weight: 600; color: var(--red); flex: 1;
+    }
+    .call-ended-banner-sub {
+      font-size: 11px; color: rgba(239,68,68,0.65); margin-left: 4px;
+    }
+    .call-ended-banner-btn {
+      font-size: 10px; font-weight: 600; letter-spacing: 0.05em;
+      padding: 4px 12px; border-radius: var(--radius-sm);
+      border: 1px solid rgba(139,92,246,0.3);
+      background: rgba(139,92,246,0.08);
+      color: var(--accent-2); cursor: pointer; transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .call-ended-banner-btn:hover { background: rgba(139,92,246,0.14); border-color: rgba(139,92,246,0.5); }
+
     /* ── RESPONSIVE ──────────────────────────────────────────────────────── */
     @media (max-width: 900px) {
       .sidebar, .right-panel { display: none; }
@@ -1129,11 +1296,14 @@
       <div class="main-topbar">
         <div class="topbar-tabs">
           <button class="tab-btn active" id="tab-diff-btn" onclick="switchMainTab('diff')">
-            📊 Diff Log
+            Diff Log
           </button>
           <button class="tab-btn" id="tab-agents-btn" onclick="switchMainTab('agents')">
-            🤖 Agents
+            Agents
             <span class="agent-count-badge" id="agent-count" style="display:none">0</span>
+          </button>
+          <button class="tab-btn" id="tab-summary-btn" onclick="switchMainTab('summary')" style="display:none">
+            Summary
           </button>
         </div>
         <div class="topbar-left" style="flex:1">
@@ -1145,6 +1315,13 @@
           <button class="btn-sm" onclick="exportLog()">Export</button>
           <button class="btn-sm" onclick="clearViewer()">Clear</button>
         </div>
+      </div>
+
+      <!-- CALL ENDED BANNER -->
+      <div class="call-ended-banner" id="call-ended-banner">
+        <div class="call-ended-dot"></div>
+        <div class="call-ended-banner-text">Call ended<span class="call-ended-banner-sub" id="call-ended-duration"></span></div>
+        <button class="call-ended-banner-btn" onclick="switchMainTab('summary')">View Summary</button>
       </div>
 
       <!-- AGENTS VIEW (shown when tab-agents-btn active) -->
@@ -1159,18 +1336,84 @@
         </div>
         <div class="agents-grid" id="agents-grid"></div>
         <div class="agents-empty-state" id="agents-empty-state">
-          <div class="agents-empty-icon">🤖</div>
+          <div class="gojo-idle-wrap">
+            <svg class="gojo-idle-svg" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <ellipse cx="22" cy="30" rx="10" ry="14" fill="#e8e8ee" opacity="0.9"/>
+              <ellipse cx="58" cy="30" rx="10" ry="14" fill="#e8e8ee" opacity="0.9"/>
+              <ellipse cx="40" cy="36" rx="26" ry="24" fill="#e8e8ee"/>
+              <ellipse cx="40" cy="54" rx="18" ry="20" fill="#f0e4d6"/>
+              <rect x="22" y="47" width="36" height="11" rx="5.5" fill="#1a1230"/>
+              <path d="M24 50 C32 48 48 48 56 50" stroke="rgba(139,92,246,0.55)" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+            </svg>
+          </div>
           <div class="agents-empty-title">No agents running</div>
-          <div class="agents-empty-sub">Say <span class="voice-prompt">"spawn a Devin agent"</span> to start, or trigger an alert to auto-spawn one.</div>
+          <div class="agents-empty-sub">Say <span class="voice-prompt">"spawn a Devin agent"</span> to start</div>
+        </div>
+      </div>
+
+      <!-- SUMMARY VIEW -->
+      <div id="summary-view">
+        <div class="summary-header">
+          <div class="summary-title">Call Summary</div>
+          <div class="summary-badge end" id="summary-badge">Call Ended</div>
+        </div>
+        <div class="summary-stats">
+          <div class="summary-stat">
+            <div class="summary-stat-val" id="sum-duration">—</div>
+            <div class="summary-stat-lbl">Duration</div>
+          </div>
+          <div class="summary-stat">
+            <div class="summary-stat-val" id="sum-actions">0</div>
+            <div class="summary-stat-lbl">Actions</div>
+          </div>
+          <div class="summary-stat">
+            <div class="summary-stat-val" id="sum-agents">0</div>
+            <div class="summary-stat-lbl">Agents</div>
+          </div>
+        </div>
+        <div class="summary-section-title">Actions</div>
+        <div class="summary-action-list" id="summary-action-list">
+          <div style="font-size:12px;color:var(--text-3);padding:8px 0">No actions recorded</div>
+        </div>
+        <div class="summary-section-title">Devin Agents</div>
+        <div class="summary-agents-grid" id="summary-agents-grid">
+          <div style="font-size:12px;color:var(--text-3);padding:8px 0">No agents spawned</div>
         </div>
       </div>
 
       <div class="viewer-wrap" id="viewer-wrap">
         <div class="empty-state" id="empty-state">
-          <div class="empty-glow">🎙️</div>
-          <div class="empty-title">Voice-Activated Infrastructure</div>
-          <div class="empty-sub">Dial in and talk to Gojo. Real InsForge changes appear here as diffs — Postgres, Edge Functions, Realtime, Storage, AI.</div>
-          <div class="phone-pill">📞 +1 (925) 515-5725</div>
+          <svg width="160" height="174" viewBox="0 0 110 120" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:0.72">
+            <ellipse cx="55" cy="42" rx="40" ry="36" fill="#f0f0f2"/>
+            <circle cx="28" cy="28" r="18" fill="#e8e8ec"/>
+            <circle cx="55" cy="18" r="20" fill="#f5f5f8"/>
+            <circle cx="82" cy="28" r="18" fill="#e8e8ec"/>
+            <circle cx="16" cy="48" r="14" fill="#ebebef"/>
+            <circle cx="94" cy="48" r="14" fill="#ebebef"/>
+            <ellipse cx="42" cy="24" rx="9" ry="5" fill="white" opacity="0.55" transform="rotate(-25 42 24)"/>
+            <ellipse cx="67" cy="20" rx="7" ry="4" fill="white" opacity="0.4" transform="rotate(15 67 20)"/>
+            <ellipse cx="55" cy="74" rx="28" ry="32" fill="#ffdfc0"/>
+            <ellipse cx="27" cy="72" rx="7" ry="9" fill="#ffdfc0"/>
+            <ellipse cx="83" cy="72" rx="7" ry="9" fill="#ffdfc0"/>
+            <ellipse cx="27" cy="72" rx="4" ry="6" fill="#f5c8a0"/>
+            <ellipse cx="83" cy="72" rx="4" ry="6" fill="#f5c8a0"/>
+            <rect x="24" y="63" width="62" height="17" rx="5" fill="#12122a"/>
+            <rect x="26" y="65" width="58" height="3" rx="2" fill="#1e1e40" opacity="0.6"/>
+            <rect x="24" y="63" width="62" height="17" rx="5" fill="url(#es-bg)" opacity="0.3"/>
+            <defs>
+              <linearGradient id="es-bg" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0"/>
+                <stop offset="50%" stop-color="#a78bfa" stop-opacity="0.8"/>
+                <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <ellipse cx="55" cy="88" rx="4" ry="2.5" fill="#f0a875" opacity="0.5"/>
+            <path d="M44 98 Q55 108 66 98" stroke="#c87050" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+            <path d="M32 52 Q26 44 28 36" stroke="#dcdce8" stroke-width="4" stroke-linecap="round" fill="none"/>
+            <path d="M40 48 Q36 38 38 28" stroke="#e4e4f0" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+            <path d="M78 52 Q84 44 82 36" stroke="#dcdce8" stroke-width="4" stroke-linecap="round" fill="none"/>
+            <path d="M70 48 Q74 38 72 28" stroke="#e4e4f0" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+          </svg>
         </div>
       </div>
     </main>
@@ -1185,8 +1428,8 @@
 
       <div class="transcript-scroll" id="transcript-scroll">
         <div class="tx-empty" id="tx-empty">
-          <div class="tx-empty-icon">💬</div>
-          Call in on<br><strong style="color:var(--text-2)">+1 (925) 515-5725</strong><br>and speak to Gojo.<br><br>Your conversation will appear here in real time.
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-3);margin-bottom:10px;letter-spacing:0.05em">+1 (925) 515-5725</div>
+          Call in and speak to Gojo.<br><br>Conversation appears here in real time.
         </div>
       </div>
 
@@ -1201,7 +1444,7 @@
           cursor:pointer; transition:all 0.15s;
           display:flex;align-items:center;gap:8px;justify-content:center;
         " onmouseover="this.style.background='rgba(239,68,68,0.14)'" onmouseout="this.style.background='rgba(239,68,68,0.08)'">
-          🚨 Simulate Production Error
+          Simulate Production Error
         </button>
       </div>
 
@@ -1227,7 +1470,7 @@
       animation:agent-spawn 0.3s ease-out both;
     ">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
-        <div style="width:36px;height:36px;border-radius:10px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);display:flex;align-items:center;justify-content:center;font-size:16px">🚨</div>
+        <div style="width:36px;height:36px;border-radius:10px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg></div>
         <div>
           <div style="font-size:14px;font-weight:700;color:var(--red)">Production Error Detected</div>
           <div style="font-size:11px;color:var(--text-3);margin-top:2px">gojo-mock-api · github.com/Dhruva966</div>
@@ -1250,11 +1493,38 @@
 
       <div style="display:flex;gap:10px">
         <button onclick="closeAlertModal()" style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text-2);font-size:12px;cursor:pointer">Cancel</button>
-        <button onclick="dispatchAlert()" style="flex:2;padding:10px;border-radius:10px;border:none;background:var(--red);color:white;font-size:12px;font-weight:600;cursor:pointer;transition:opacity 0.15s" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">📞 Call me now</button>
+        <button onclick="dispatchAlert()" style="flex:2;padding:10px;border-radius:10px;border:none;background:var(--red);color:white;font-size:12px;font-weight:600;cursor:pointer;transition:opacity 0.15s" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">Call me now</button>
       </div>
 
       <div style="margin-top:14px;font-size:11px;color:var(--text-3);text-align:center;line-height:1.6">
         Gojo will call you, describe the error, and wait for your approval before spawning a Devin agent to fix it.
+      </div>
+    </div>
+  </div>
+
+  <!-- Devin detail modal -->
+  <div id="devin-modal" onclick="if(event.target===this)closeDevinModal()">
+    <div class="devin-modal-box">
+      <div class="devin-modal-head">
+        <div class="agent-num" id="devin-modal-num">1</div>
+        <div class="devin-modal-title" id="devin-modal-task">Task</div>
+        <div class="agent-status-badge running" id="devin-modal-badge">running</div>
+        <button onclick="closeDevinModal()" style="background:none;border:none;color:var(--text-3);font-size:20px;cursor:pointer;padding:2px 6px;line-height:1;margin-left:4px">×</button>
+      </div>
+      <div class="devin-modal-body">
+        <div class="devin-modal-section">
+          <div class="devin-modal-section-title">Current Status</div>
+          <div class="devin-modal-status-text" id="devin-modal-status">Agent is working…</div>
+        </div>
+        <div class="devin-modal-section devin-modal-diff" id="devin-modal-diff-section" style="display:none">
+          <div class="devin-modal-section-title">Diff</div>
+          <div id="devin-modal-diff-content"></div>
+        </div>
+      </div>
+      <div class="devin-modal-foot">
+        <div style="font-size:11px;color:var(--text-3);flex:1" id="devin-modal-meta">—</div>
+        <a class="agent-session-link" id="devin-modal-session-link" href="#" target="_blank" style="display:none">View in Devin</a>
+        <a class="agent-pr-link" id="devin-modal-pr-link" href="#" target="_blank" style="display:none">Open PR</a>
       </div>
     </div>
   </div>
@@ -1287,6 +1557,16 @@
   </nav>
 
   <script>
+    // ── GOJO SVG (card logo) ─────────────────────────────────────────────────
+    const GOJO_LOGO_SVG = `<svg class="gojo-card-logo" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="22" cy="28" rx="10" ry="14" fill="#e8e8ee" opacity="0.9"/>
+      <ellipse cx="58" cy="28" rx="10" ry="14" fill="#e8e8ee" opacity="0.9"/>
+      <ellipse cx="40" cy="34" rx="26" ry="24" fill="#e8e8ee"/>
+      <ellipse cx="40" cy="52" rx="18" ry="20" fill="#f0e4d6"/>
+      <rect x="22" y="45" width="36" height="11" rx="5.5" fill="#1a1230"/>
+      <path d="M24 48 C32 46 48 46 56 48" stroke="rgba(139,92,246,0.7)" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+    </svg>`;
+
     // ── STATE ────────────────────────────────────────────────────────────────
     const state = {
       callSid: null,
@@ -1296,6 +1576,8 @@
       activeFilters: new Set(['insforge','twilio','gemini','replicas','slack']),
       activeTraceItem: null,
       events: [],
+      actionHistory: [],   // { action, sponsor, success, durationMs }
+      endedDuration: 0,
     };
 
     // ── SPLASH ───────────────────────────────────────────────────────────────
@@ -1453,6 +1735,13 @@
       state.actionCount++;
       document.getElementById('val-actions').textContent = state.actionCount;
 
+      state.actionHistory.push({
+        action: ev.action,
+        sponsor: ev.sponsor ?? '',
+        success: ev.success !== false,
+        durationMs: ev.durationMs ?? null,
+      });
+
       const status = ev.success ? 'ok' : 'err';
       addTraceItem(ev.action, ev.sponsor ?? '', status, ev);
 
@@ -1466,8 +1755,26 @@
       document.getElementById('waveform').style.display = 'none';
       document.getElementById('thinking-row').classList.remove('visible');
       if (state.timerInterval) { clearInterval(state.timerInterval); state.timerInterval = null; }
-      const s = ev.duration ?? 0;
-      document.getElementById('val-time').textContent = `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+
+      const s = ev.duration ?? Math.floor((Date.now() - (state.startTime ?? Date.now())) / 1000);
+      state.endedDuration = s;
+      const durStr = `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+      document.getElementById('val-time').textContent = durStr;
+
+      // Show call-ended banner
+      const banner = document.getElementById('call-ended-banner');
+      banner.classList.add('visible');
+      document.getElementById('call-ended-duration').textContent = ` · ${durStr} · ${ev.actionCount ?? state.actionCount} action(s)`;
+
+      // Show Summary tab button
+      document.getElementById('tab-summary-btn').style.display = '';
+
+      // Auto-switch to summary after 2.5s
+      setTimeout(() => {
+        populateSummaryView(s);
+        switchMainTab('summary');
+      }, 2500);
+
       toast(`Call ended · ${ev.actionCount ?? state.actionCount} action(s)`, 'ok');
     }
 
@@ -1504,16 +1811,11 @@
       item.className = 'trace-item';
       item.dataset.eventIndex = state.events.length - 1;
 
-      const icons = {
-        run_sql: '🗄️', add_index: '⚡', deploy_edge_fn: '🚀',
-        get_logs: '📋', check_storage: '🪣', send_sms: '📱',
-        spawn_coding_agent: '🤖', analyze_with_ai: '🧠', send_slack: '💬',
-      };
-      const icon = icons[action] ?? '⚙️';
+      const lbl = toolLabel(action);
       const now = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
 
       item.innerHTML = `
-        <div class="trace-icon" style="background:rgba(255,255,255,0.04)">${icon}</div>
+        <div class="trace-icon" style="background:rgba(255,255,255,0.04);font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:var(--text-3)">${lbl}</div>
         <div class="trace-body">
           <div class="trace-action">${action}</div>
           <div class="trace-sponsor">${sponsor}</div>
@@ -1565,8 +1867,8 @@
 
       card.innerHTML = `
         <div class="action-card-head">
-          <div class="action-card-icon" style="background:rgba(255,255,255,0.05)">
-            ${toolEmoji(ev.action)}
+          <div class="action-card-icon" style="background:rgba(255,255,255,0.05);font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--text-3)">
+            ${toolLabel(ev.action)}
           </div>
           <div class="action-card-title">${ev.action ?? ''}</div>
           ${badgeClass ? `<div class="action-card-badge ${badgeClass}">${ev.sponsor ?? ''}</div>` : ''}
@@ -1597,7 +1899,7 @@
       card.className = 'action-card';
       card.innerHTML = `
         <div class="action-card-head">
-          <div class="action-card-icon">🧠</div>
+          <div class="action-card-icon" style="background:rgba(255,255,255,0.05);font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--text-3)">AI</div>
           <div class="action-card-title">AI Analysis</div>
           <div class="action-card-badge badge-gemini">Gemini · AI Gateway</div>
         </div>
@@ -1617,7 +1919,7 @@
       const msg = document.createElement('div');
       msg.className = 'tx-msg';
       msg.innerHTML = `
-        <div class="tx-role ${role}">${role === 'agent' ? '⚡ Gojo' : '👤 You'}</div>
+        <div class="tx-role ${role}">${role === 'agent' ? 'Gojo' : 'You'}</div>
         <div class="tx-bubble ${role}">${escapeHtml(text)}</div>
       `;
       scroll.appendChild(msg);
@@ -1705,35 +2007,44 @@
         .replace(/"/g, '&quot;');
     }
 
-    function toolEmoji(action) {
+    function toolLabel(action) {
       const map = {
-        run_sql: '🗄️', add_index: '⚡', deploy_edge_fn: '🚀',
-        get_logs: '📋', check_storage: '🪣', send_sms: '📱',
-        spawn_coding_agent: '🤖', spawn_devin_agent: '🤖',
-        analyze_with_ai: '🧠', send_slack: '💬',
+        run_sql: 'SQL', add_index: 'IDX', deploy_edge_fn: 'FN',
+        get_logs: 'LOG', check_storage: 'STR', send_sms: 'SMS',
+        spawn_coding_agent: 'BOT', spawn_devin_agent: 'DEV',
+        analyze_with_ai: 'AI', send_slack: 'SLK',
       };
-      return map[action] ?? '⚙️';
+      return map[action] ?? 'SYS';
     }
 
     // ── MAIN TAB SWITCHER ─────────────────────────────────────────────────────
     function switchMainTab(tab) {
-      const viewerWrap  = document.getElementById('viewer-wrap');
-      const agentsView  = document.getElementById('agents-view');
-      const diffBtn     = document.getElementById('tab-diff-btn');
-      const agentsBtn   = document.getElementById('tab-agents-btn');
-      const tabFilename = document.getElementById('tab-filename');
+      const viewerWrap   = document.getElementById('viewer-wrap');
+      const agentsView   = document.getElementById('agents-view');
+      const summaryView  = document.getElementById('summary-view');
+      const diffBtn      = document.getElementById('tab-diff-btn');
+      const agentsBtn    = document.getElementById('tab-agents-btn');
+      const summaryBtn   = document.getElementById('tab-summary-btn');
+      const tabFilename  = document.getElementById('tab-filename');
+
+      // Hide all
+      viewerWrap.style.display = 'none';
+      agentsView.classList.remove('visible');
+      summaryView.classList.remove('visible');
+      diffBtn.classList.remove('active');
+      agentsBtn.classList.remove('active');
+      if (summaryBtn) summaryBtn.classList.remove('active');
+      tabFilename.style.display = 'none';
 
       if (tab === 'agents') {
-        viewerWrap.style.display   = 'none';
         agentsView.classList.add('visible');
-        diffBtn.classList.remove('active');
         agentsBtn.classList.add('active');
-        tabFilename.style.display = 'none';
+      } else if (tab === 'summary') {
+        summaryView.classList.add('visible');
+        if (summaryBtn) summaryBtn.classList.add('active');
       } else {
-        viewerWrap.style.display   = '';
-        agentsView.classList.remove('visible');
+        viewerWrap.style.display = '';
         diffBtn.classList.add('active');
-        agentsBtn.classList.remove('active');
         tabFilename.style.display = '';
       }
     }
@@ -1764,6 +2075,7 @@
 
       card.innerHTML = `
         <div class="agent-card-head">
+          ${GOJO_LOGO_SVG}
           <div class="agent-num">${num}</div>
           <div class="agent-head-info">
             <div class="agent-task-text">${escapeHtml(task ?? 'Coding task')}</div>
@@ -1787,6 +2099,7 @@
           <div class="agent-foot-meta" id="meta-${agentId}">started ${formatTime(startedAt)}</div>
         </div>
       `;
+      card.addEventListener('click', () => openDevinModal(agentId));
 
       grid.appendChild(card);
       entry.el = card;
@@ -1825,7 +2138,6 @@
         const narEl = document.getElementById(`narration-${agentId}`);
         if (narEl) {
           narEl.innerHTML = `
-            <div class="narration-icon">💬</div>
             <div class="narration-text">${escapeHtml(updates.narration)}</div>
           `;
         }
@@ -1860,14 +2172,19 @@
         const dur = Math.floor((Date.now() - entry.startedAt) / 1000);
         if (foot) {
           const sessionLink = updates.sessionUrl
-            ? `<a class="agent-session-link" href="${updates.sessionUrl}" target="_blank">View in Devin →</a>` : '';
+            ? `<a class="agent-session-link" href="${updates.sessionUrl}" target="_blank">View in Devin</a>` : '';
           const prLink = updates.prUrl
-            ? `<a class="agent-pr-link" href="${updates.prUrl}" target="_blank">Open PR →</a>` : '';
+            ? `<a class="agent-pr-link" href="${updates.prUrl}" target="_blank">Open PR</a>` : '';
           foot.innerHTML = `
-            <div class="agent-foot-meta">${dur}s · ${updates.status === 'done' ? '✓ done' : updates.status}</div>
+            <div class="agent-foot-meta">${dur}s · ${updates.status === 'done' ? 'done' : updates.status}</div>
             ${sessionLink}${prLink}
           `;
         }
+      }
+
+      // Refresh modal if it's open for this agent
+      if (typeof _currentDevinModalId !== 'undefined' && _currentDevinModalId === agentId) {
+        openDevinModal(agentId);
       }
     }
 
@@ -1966,11 +2283,118 @@
       }
     }
 
-    // ── AGENT EVENT HANDLERS ──────────────────────────────────────────────────
-    // handleEvent additions (extend the existing switch)
-    const _origHandleEvent = handleEvent;
-    // We re-define handleEvent to also handle agent events
-    // (the switch below extends the original)
+    // ── SUMMARY VIEW ──────────────────────────────────────────────────────────
+    function populateSummaryView(durationSecs) {
+      const s = durationSecs ?? state.endedDuration ?? 0;
+      const durStr = `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+
+      document.getElementById('sum-duration').textContent = durStr;
+      document.getElementById('sum-actions').textContent  = state.actionHistory.length;
+      document.getElementById('sum-agents').textContent   = agents.size;
+
+      // Actions list
+      const actionList = document.getElementById('summary-action-list');
+      if (state.actionHistory.length > 0) {
+        actionList.innerHTML = state.actionHistory.map(a => `
+          <div class="summary-action-row">
+            <div class="summary-action-abbr">${toolLabel(a.action)}</div>
+            <div class="summary-action-name">${escapeHtml(a.action)}${a.sponsor ? `<span style="color:var(--text-3);font-size:10px;margin-left:6px">${escapeHtml(a.sponsor)}</span>` : ''}</div>
+            ${a.durationMs ? `<div style="font-size:10px;color:var(--text-3);font-family:'JetBrains Mono',monospace">${a.durationMs}ms</div>` : ''}
+            <div class="summary-action-status ${a.success ? 'ok' : 'err'}">${a.success ? 'OK' : 'ERR'}</div>
+          </div>
+        `).join('');
+      } else {
+        actionList.innerHTML = '<div style="font-size:12px;color:var(--text-3);padding:8px 0">No actions recorded</div>';
+      }
+
+      // Agents grid
+      const agentsGrid = document.getElementById('summary-agents-grid');
+      const agentEntries = [...agents.values()];
+      if (agentEntries.length > 0) {
+        agentsGrid.innerHTML = agentEntries.map(a => {
+          const dur = Math.floor((Date.now() - a.startedAt) / 1000);
+          const sessionLink = a.sessionUrl ? `<a class="agent-session-link" href="${a.sessionUrl}" target="_blank">View in Devin</a>` : '';
+          const prLink = a.prUrl ? `<a class="agent-pr-link" href="${a.prUrl}" target="_blank">Open PR</a>` : '';
+          return `
+            <div class="summary-agent-card">
+              <div class="summary-agent-task">${escapeHtml(a.task ?? 'Coding task')}</div>
+              <div class="summary-agent-meta">
+                Agent #${a.num} · ${a.status} · ${dur}s
+              </div>
+              ${(sessionLink || prLink) ? `<div class="summary-agent-links">${sessionLink}${prLink}</div>` : ''}
+            </div>
+          `;
+        }).join('');
+      } else {
+        agentsGrid.innerHTML = '<div style="font-size:12px;color:var(--text-3);padding:8px 0">No agents spawned</div>';
+      }
+    }
+
+    // ── DEVIN MODAL ───────────────────────────────────────────────────────────
+    let _currentDevinModalId = null;
+
+    function openDevinModal(agentId) {
+      const entry = agents.get(agentId);
+      if (!entry) return;
+      _currentDevinModalId = agentId;
+
+      document.getElementById('devin-modal-num').textContent  = entry.num;
+      document.getElementById('devin-modal-task').textContent = entry.task ?? 'Coding task';
+
+      const badge = document.getElementById('devin-modal-badge');
+      badge.className = `agent-status-badge ${entry.status}`;
+      badge.textContent = entry.status;
+
+      document.getElementById('devin-modal-status').textContent = entry.narration ?? 'Agent is working…';
+
+      // Diff section
+      const diffSection = document.getElementById('devin-modal-diff-section');
+      const diffContent = document.getElementById('devin-modal-diff-content');
+      if (entry.diff) {
+        diffSection.style.display = '';
+        let lang = 'diff', displayDiff = entry.diff;
+        const trimmed = entry.diff.trim();
+        if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+          try { displayDiff = JSON.stringify(JSON.parse(trimmed), null, 2); lang = 'json'; } catch {}
+        } else if (entry.diff.includes('---') || entry.diff.startsWith('diff ')) {
+          lang = 'diff';
+        } else if (entry.diff.includes('SELECT') || entry.diff.includes('CREATE')) {
+          lang = 'sql';
+        } else { lang = 'typescript'; }
+        diffContent.innerHTML = `<pre class="language-${lang}"><code class="language-${lang}">${escapeHtml(displayDiff)}</code></pre>`;
+        if (window.Prism) Prism.highlightAllUnder(diffContent);
+      } else {
+        diffSection.style.display = 'none';
+      }
+
+      // Footer
+      const dur = Math.floor((Date.now() - entry.startedAt) / 1000);
+      document.getElementById('devin-modal-meta').textContent = `Agent #${entry.num} · ${dur}s elapsed`;
+
+      const sessionLink = document.getElementById('devin-modal-session-link');
+      if (entry.sessionUrl) {
+        sessionLink.href = entry.sessionUrl;
+        sessionLink.style.display = '';
+      } else {
+        sessionLink.style.display = 'none';
+      }
+
+      const prLink = document.getElementById('devin-modal-pr-link');
+      if (entry.prUrl) {
+        prLink.href = entry.prUrl;
+        prLink.style.display = '';
+      } else {
+        prLink.style.display = 'none';
+      }
+
+      document.getElementById('devin-modal').classList.add('visible');
+    }
+
+    function closeDevinModal() {
+      document.getElementById('devin-modal').classList.remove('visible');
+      _currentDevinModalId = null;
+    }
+
 
   </script>
 </body>

@@ -81,6 +81,18 @@ socket.on("call_event", (message) => { /* message includes .meta from server */ 
 
 **Current InsForge project:** `cayxche9.us-east.insforge.app` (switched from `fy4p4tyq`)
 **DB tables:** `voice_calls` + `events` (created 2026-06-06, RLS enabled)
+**Dashboard (Vercel):** `https://web-eta-two-78.vercel.app`
+**Devin:** `DEVIN_ORG_ID=org-61ec02a9a3ac437ba2e6f96165679f5d`, target repo `Dhruva966/gojo-mock-api`
+
+## ngrok / Server Restart Protocol
+
+⚠️ Nodemon does NOT watch `.env`. After any `.env` change (e.g. new ngrok URL), restart server:
+```bash
+pkill -f "nodemon.*server.ts" && pkill -f "tsx.*server.ts"
+cd api && npm run dev
+```
+
+On every ngrok restart, update all 4 locations: `.env` `TWILIO_WEBHOOK_BASE`, Twilio console webhook, Vercel `BACKEND_URL` env var + redeploy (`cd web && npx vercel --prod`).
 
 ## Twilio Media Streams — Key Facts
 

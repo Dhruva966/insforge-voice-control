@@ -21,13 +21,18 @@ Twilio voice call → Gemini Live voice AI → InsForge infra actions → Vercel
 api/src/server.ts               ← Express + WebSocketServer entry point
 api/src/config.ts               ← Zod env validation (exits process on bad env)
 api/src/routes/voice.ts         ← POST /voice Twilio webhook
+api/src/routes/alert.ts         ← POST /alert/trigger — outbound alert call
+api/src/routes/events.ts        ← GET /api/events — local SSE relay
 api/src/routes/mediaStream.ts   ← WS /media-stream audio bridge
+api/src/middleware/twilioValidate.ts ← Twilio HMAC signature check
 api/src/services/gemini/        ← Gemini Live session, audio codec, tools
 api/src/services/insforge/      ← InsForge SDK client, sessions, realtime, actions
-api/src/services/replicas/      ← Replicas coding agent (stretch)
-web/public/index.html           ← Single-file dashboard
-web/api/events.ts               ← SSE relay Vercel function
-db/migrations/001_init.sql      ← calls + events tables
+api/src/services/devin/         ← Devin v3 API client + transcript router
+api/src/services/alert/         ← In-memory alert store (correlates call → alert ctx)
+web/public/index.html           ← Single-file SPA dashboard
+web/api/events.ts               ← Vercel SSE relay function (maxDuration 300s)
+web/api/alert/trigger.ts        ← Vercel proxy → Express /alert/trigger
+db/migrations/001_init.sql      ← voice_calls + events tables
 docs/RESEARCH.md                ← ALL verified API docs — read before coding
 ```
 
@@ -76,7 +81,25 @@ GEMINI_API_KEY, GEMINI_MODEL, GEMINI_VOICE
 TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER, TWILIO_WEBHOOK_BASE
 INSFORGE_URL, INSFORGE_KEY
 REPLICAS_API_KEY
+DEVIN_API_KEY, DEVIN_ORG_ID           ← org-61ec02a9a3ac437ba2e6f96165679f5d
+SLACK_WEBHOOK_URL, SLACK_SIGNING_SECRET  ← optional
 NODE_ENV, PORT
+```
+
+## Current Live State
+
+- ngrok: `https://71f7-136-25-74-62.ngrok-free.app` (ephemeral — update after each restart)
+- Dashboard: `https://web-eta-two-78.vercel.app`
+- Twilio number: `+1 (925) 515-5725`
+- InsForge project: `cayxche9.us-east.insforge.app`
+- Devin target repo: `Dhruva966/gojo-mock-api`
+
+## CRITICAL: Server Restart After .env Change
+
+Nodemon watches `.ts`/`.json` — NOT `.env`. After updating `.env` (e.g., new ngrok URL), restart:
+```bash
+pkill -f "nodemon.*server.ts" && pkill -f "tsx.*server.ts"
+cd api && npm run dev
 ```
 
 ## Test Command
