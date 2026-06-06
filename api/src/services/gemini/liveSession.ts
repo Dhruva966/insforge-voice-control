@@ -46,16 +46,28 @@ export async function openGeminiSession(
     },
     callbacks: {
       onmessage: async (msg) => {
+        const userTranscript = msg.serverContent?.inputTranscription?.text?.trim();
+        if (userTranscript) {
+          await broadcastEvent({
+            type: "transcript",
+            callSid,
+            role: "user",
+            text: userTranscript,
+            timestamp: new Date().toISOString(),
+          });
+        }
+
         if (msg.data) {
           onAudio(geminiToTwilio(msg.data));
         }
 
-        if (msg.serverContent?.outputTranscription?.text) {
+        const agentTranscript = msg.serverContent?.outputTranscription?.text?.trim();
+        if (agentTranscript) {
           await broadcastEvent({
             type: "transcript",
             callSid,
             role: "agent",
-            text: msg.serverContent.outputTranscription.text,
+            text: agentTranscript,
             timestamp: new Date().toISOString(),
           });
         }

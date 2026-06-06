@@ -66,8 +66,7 @@ if (result.error) throw new Error(result.error.message);
 
 ```
 INSFORGE_URL=https://your-project.us-east.insforge.app
-INSFORGE_ANON_KEY=...      # safe for browser/Vercel
-INSFORGE_SERVICE_KEY=...   # backend only — never expose to frontend
+INSFORGE_KEY=...           # backend/admin key
 ```
 
 ### Key Difference vs Supabase
@@ -555,7 +554,7 @@ npm i -g vercel
 vercel login
 cd web/
 vercel env add INSFORGE_URL
-vercel env add INSFORGE_ANON_KEY
+vercel env add INSFORGE_KEY
 vercel --prod
 ```
 

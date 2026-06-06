@@ -146,6 +146,7 @@
       color: #8b949e;
     }
     .transcript-line.agent { color: #58a6ff; }
+    .transcript-line.user { color: #e6edf3; }
   </style>
 </head>
 <body>
@@ -191,7 +192,7 @@
 
   <script>
     // ⚠️ In production (Vercel), this points to /api/events automatically.
-    // For local dev, change to: "http://localhost:3000/api/events"
+    // For local dev, run this dashboard through `npx vercel dev --listen 3001`.
     const SSE_URL = "/api/events";
 
     let callStartTime = null;
@@ -254,8 +255,11 @@
         case "call_started":
           callStartTime = Date.now();
           setStatus("active");
+          document.getElementById("exec-log").innerHTML = "";
+          document.getElementById("transcript-panel").innerHTML = "";
           document.getElementById("call-status-text").textContent = "Active";
           document.getElementById("call-sid-text").textContent = event.callSid ?? "";
+          document.getElementById("call-duration-text").textContent = "";
           document.getElementById("diff-placeholder") && (document.getElementById("diff-viewer").innerHTML = '<div style="color:#3d444d;font-size:14px;text-align:center;margin-top:80px;">Agent connected. Listening...</div>');
           break;
 

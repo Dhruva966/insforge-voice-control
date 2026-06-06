@@ -9,14 +9,23 @@ Vanilla HTML dashboard deployed to Vercel. No build step. One SSE serverless fun
 
 ## Local Dev
 
-Open `public/index.html` in browser. Change the EventSource URL to `http://localhost:3000/api/events`.
+Run the dashboard through Vercel so the local SSE function exists:
+
+```bash
+cd web/
+npm install
+npx vercel dev --listen 3001
+```
+
+Open `http://localhost:3001`.
 
 ## Vercel Deploy
 
 ```bash
 cd web/
+npm install
 vercel env add INSFORGE_URL
-vercel env add INSFORGE_ANON_KEY
+vercel env add INSFORGE_KEY
 vercel --prod
 ```
 
@@ -32,5 +41,5 @@ InsForge Realtime event name (`call_event`) must match what the backend publishe
 
 ```
 INSFORGE_URL=        (from InsForge project settings)
-INSFORGE_ANON_KEY=   (public anon key — safe for Vercel)
+INSFORGE_KEY=        (server-side project admin key; stored only in Vercel env)
 ```
