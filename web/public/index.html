@@ -383,6 +383,14 @@
 
     function handleEvent(e) {
       switch (e.type) {
+        case "error":
+          if (timerInterval) clearInterval(timerInterval);
+          setStatus("ended");
+          document.getElementById('status-text').textContent = "Connection Error";
+          createOpCard("error-card", "Connection Error", { details: e.message });
+          finishOpCard("error-card", false, 0);
+          break;
+
         case "call_started":
           callStartTime = Date.now();
           actionCount = 0;
