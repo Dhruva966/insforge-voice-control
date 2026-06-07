@@ -96,7 +96,8 @@ export function getSponsor(tool: string): string {
 }
 
 async function runSqlQuery(sql: string): Promise<ActionResult> {
-  const trimmed = sql.trim();
+  // Strip trailing semicolon before validation — Gemini always appends one
+  const trimmed = sql.trim().replace(/;+$/, "");
   if (!trimmed.toLowerCase().startsWith("select")) {
     throw new Error("Security: only SELECT queries are allowed");
   }
@@ -158,7 +159,7 @@ async function getLogs(source: "insforge.logs" | "function.logs"): Promise<Actio
   if (!VALID_LOG_SOURCES.has(source)) {
     throw new Error(`Security: invalid log source: ${JSON.stringify(source)}`);
   }
-  const output = await cli("logs", source, "--limit", "20", "--json");
+  const output = await cli("logs", source, "--json");
   const logs = parseJsonOrLines(output);
   return {
     action: "get_logs",
