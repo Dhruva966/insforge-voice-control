@@ -24,8 +24,9 @@ export async function openGeminiSession(
   alertCtx?: AlertContext
 ): Promise<GeminiHandle> {
   let actionCount = 0;
-  let lastUserTranscript = "";
-  let lastAgentTranscript = "";
+  let agentTranscriptAccum = "";
+  let userTranscriptAccum = "";
+  let lastRoutedUserTranscript = "";
 
   const liveSession = await ai.live.connect({
     model: config.GEMINI_MODEL,
@@ -56,49 +57,61 @@ export async function openGeminiSession(
           onAudio(geminiToTwilio(msg.data));
         }
 
-        const userTranscript = msg.serverContent?.inputTranscription?.text?.trim();
-        if (userTranscript && userTranscript !== lastUserTranscript) {
-          lastUserTranscript = userTranscript;
-          const text = userTranscript;
-          void broadcastEvent({
-            type: "transcript",
-            callSid,
-            role: "user",
-            text,
-            timestamp: new Date().toISOString(),
-          }).catch((err) => console.error(`[${callSid}] user transcript broadcast error:`, err));
-
-          // Route transcript to relevant Devin agents if any are running
-          const runningAgents = [...activeDevinSessions.entries()]
-            .filter(([, v]) => v.callSid === callSid)
-            .map(([sessionId, v]) => ({ sessionId, task: v.task, num: v.num, status: "running" }));
-
-          if (runningAgents.length > 0) {
-            void routeTranscript(text, runningAgents).then(async (decision) => {
-              if (!decision || decision.confidence !== "high") return;
-              const entry = activeDevinSessions.get(decision.sessionId);
-              if (!entry) return;
-              await broadcastEvent({
-                type: "agent_routed",
-                callSid,
-                sessionId: decision.sessionId,
-                agentNum: entry.num,
-                instruction: decision.instruction,
-              }).catch(() => { /* ignore */ });
-            }).catch(() => { /* non-critical */ });
+        const userChunk = msg.serverContent?.inputTranscription?.text;
+        if (userChunk) {
+          userTranscriptAccum += userChunk;
+          const text = userTranscriptAccum.trim();
+          if (text) {
+            void broadcastEvent({
+              type: "transcript",
+              callSid,
+              role: "user",
+              text,
+              timestamp: new Date().toISOString(),
+            }).catch((err) => console.error(`[${callSid}] user transcript broadcast error:`, err));
           }
         }
 
-        const agentTranscript = msg.serverContent?.outputTranscription?.text?.trim();
-        if (agentTranscript && agentTranscript !== lastAgentTranscript) {
-          lastAgentTranscript = agentTranscript;
-          void broadcastEvent({
-            type: "transcript",
-            callSid,
-            role: "agent",
-            text: agentTranscript,
-            timestamp: new Date().toISOString(),
-          }).catch((err) => console.error(`[${callSid}] agent transcript broadcast error:`, err));
+        const agentChunk = msg.serverContent?.outputTranscription?.text;
+        if (agentChunk) {
+          agentTranscriptAccum += agentChunk;
+          const text = agentTranscriptAccum.trim();
+          if (text) {
+            void broadcastEvent({
+              type: "transcript",
+              callSid,
+              role: "agent",
+              text,
+              timestamp: new Date().toISOString(),
+            }).catch((err) => console.error(`[${callSid}] agent transcript broadcast error:`, err));
+          }
+        }
+
+        if (msg.serverContent?.turnComplete) {
+          // Route completed user turn to Devin agents
+          const text = userTranscriptAccum.trim();
+          if (text && text !== lastRoutedUserTranscript) {
+            lastRoutedUserTranscript = text;
+            const runningAgents = [...activeDevinSessions.entries()]
+              .filter(([, v]) => v.callSid === callSid)
+              .map(([sessionId, v]) => ({ sessionId, task: v.task, num: v.num, status: "running" }));
+            if (runningAgents.length > 0) {
+              void routeTranscript(text, runningAgents).then(async (decision) => {
+                if (!decision || decision.confidence !== "high") return;
+                const entry = activeDevinSessions.get(decision.sessionId);
+                if (!entry) return;
+                await broadcastEvent({
+                  type: "agent_routed",
+                  callSid,
+                  sessionId: decision.sessionId,
+                  agentNum: entry.num,
+                  instruction: decision.instruction,
+                }).catch(() => { /* ignore */ });
+              }).catch(() => { /* non-critical */ });
+            }
+          }
+          agentTranscriptAccum = "";
+          userTranscriptAccum = "";
         }
 
         if (msg.toolCall?.functionCalls?.length) {
